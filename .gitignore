@@ -1,0 +1,5 @@
+*.swp
+*.o
+src/.depends
+src/eastris
+src/tags
