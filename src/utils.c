@@ -32,29 +32,31 @@
 #include <limits.h>
 
 #include "typedefs.h"
+#include "basic.h"
 
 /*
  * Initialize random number generator
  */
 void rand_init ()
 {
-#ifdef USE_RAND
-   srand (time (NULL));
-#else
    srandom (time (NULL));
-#endif
 }
 
 /*
- * Generate a random number within range
+ * Generate a random number within range, unless
+ * status has us pick a mostly determinate value.
  */
-int rand_value (int range)
+int rand_value (int status, int range)
 {
-#ifdef USE_RAND
-   return ((int) ((float) range * rand () / (RAND_MAX + 1.0)));
-#else
-   return (random () % range);
-#endif
+   if(status < 0) {
+     return (random () % range);
+   } else {
+     int rc = status / STATUS_GROUP;
+     if((RANDOM_MAX / 80) < random()) {
+       rc = (rc == 6)? 0 : rc + 1;
+     }
+     return(rc);
+   }
 }
 
 /*

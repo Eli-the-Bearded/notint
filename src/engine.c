@@ -41,6 +41,16 @@
 
 const shapes_t SHAPES =
 {
+/*
+ *      X.X       X.X           X.X
+ *        X.X   X.X     X.X.X   X.X     X.X.X   X.X.X   X.X.X.X
+ *                        X             X           X
+ *
+ * num    0       1       2       3       4       5       6
+ * ASCII art from tetris-bsd, which uses same numbering. (This
+ * is not the order shown in the tint statistics.)
+ */     
+
    { COLOR_CYAN,    0, FALSE, { {  1,  0 }, {  0,  0 }, {  0, -1 }, { -1, -1 } } },
    { COLOR_GREEN,   1, FALSE, { {  1, -1 }, {  0, -1 }, {  0,  0 }, { -1,  0 } } },
    { COLOR_YELLOW,  2, FALSE, { { -1,  0 }, {  0,  0 }, {  1,  0 }, {  0,  1 } } },
@@ -246,9 +256,10 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    /* intialize values */
    engine->curx = 5;
    engine->cury = 1;
-   engine->curshape = rand_value (NUMSHAPES);
-   engine->nextshape = rand_value (NUMSHAPES);
+   engine->curshape = rand_value (0, NUMSHAPES);
+   engine->nextshape = rand_value (0, NUMSHAPES);
    engine->score = 0;
+   engine->rand_status = 0;
    engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = 0;
    /* initialize shapes */
    memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
@@ -310,7 +321,8 @@ int engine_evaluate (engine_t *engine)
 		engine->curx = 5;
 		engine->cury = 1;
 		engine->curshape = engine->nextshape;
-		engine->nextshape = rand_value (NUMSHAPES);
+		engine->nextshape = rand_value (engine->rand_status, NUMSHAPES);
+		engine->rand_status = UPDATE_RS(engine->rand_status);
 		/* initialize shapes */
 		memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
 		/* return games status */

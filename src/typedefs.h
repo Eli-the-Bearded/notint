@@ -65,4 +65,8 @@
 #define OK		0
 #endif
 
+#ifndef RANDOM_MAX
+#define RANDOM_MAX RAND_MAX
+#endif
+
 #endif	/* #ifndef TYPEDEFS_H */

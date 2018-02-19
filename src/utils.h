@@ -39,7 +39,7 @@ void rand_init ();
 /*
  * Generate a random number within range
  */
-int rand_value (int range);
+int rand_value (int status, int range);
 
 /*
  * Convert an str to long. Returns TRUE if successful,

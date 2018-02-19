@@ -43,12 +43,13 @@ endif
 endif
 
 CFLAGS += -Wall
-CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/$(PRG).scores\" #-DUSE_RAND
+CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/$(PRG).scores\"
 LDLIBS = -lncurses
 
 OBJ = engine.o utils.o io.o tint.o
 SRC = $(OBJ:%.o=%.c)
-PRG = tint
+HEADERS = config.h engine.h io.h typedefs.h utils.h
+PRG = notint
 
        ########### NOTHING TO EDIT BELOW THIS ###########
 
@@ -74,8 +75,12 @@ with-depends: $(PRG)
 $(PRG): $(OBJ)
 	$(CROSS)$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
+tags:
+	ctags $(SRC) $(HEADERS)
+
 clean:
 	rm -f .depends *~ $(OBJ) $(PRG) {configure,build}-stamp gmon.out a.out
 
 distclean: clean
+	rm tags
 

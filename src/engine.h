@@ -30,24 +30,18 @@
  */
 
 #include "typedefs.h"		/* bool */
+#include "basic.h"		/* board size, shape count, etc */
 
 /*
  * Macros
  */
 
-/* Number of shapes in the game */
-#define NUMSHAPES	7
-
-/* Number of blocks in each shape */
-#define NUMBLOCKS	4
-
-/* Number of rows and columns in board */
-#define NUMROWS	23
-#define NUMCOLS	13
-
-/* Wall id - Arbitrary, but shouldn't have the same value as one of the colors */
-#define WALL 16
-
+/* if rand_status < 0, return -1; 
+ *	else if rand_status is MAX, return zero
+ *		else return rand_status incremented
+ */
+#define UPDATE_RS(_rs)	((_rs) < 0 ? -1 : \
+			   ((_rs) == STATUS_MAX ? 0 : (_rs) + 1))
 /*
  * Type definitions
  */
@@ -81,6 +75,8 @@ typedef struct engine_struct
    int curx,cury;									/* coordinates of current piece */
    int curshape,nextshape;							/* current & next shapes */
    int score;										/* score */
+   int rand_status;
+   	/* -1 : regular; 0 & up: shape counter */
    shapes_t shapes;									/* shapes */
    board_t board;									/* board */
    status_t status;									/* current status of shapes */
