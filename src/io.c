@@ -44,16 +44,16 @@
 #define CURSOR_NORMAL		1
 
 /* Maps color definitions onto their real definitions */
-static int color_map[NUM_COLORS];
+static short color_map[NUM_COLORS];
 
 /* Maps attribute definitions onto their real definitions */
-static int attr_map[NUM_ATTRS];
+static short attr_map[NUM_ATTRS];
 
 /* Current attribute used on screen */
 static int out_attr;
 
 /* Current color used on screen */
-static int out_color;
+static short out_color;
 
 /* This is the timeout in microseconds */
 static int in_timetotal;
@@ -69,6 +69,7 @@ static int in_timeleft;
 void io_init ()
 {
    initscr ();
+   cbreak ();
    start_color ();
    curs_set (CURSOR_INVISIBLE);
    out_attr = A_NORMAL;
@@ -99,6 +100,7 @@ void io_init ()
 void io_close ()
 {
    echo ();
+   nocbreak ();
    attrset (A_NORMAL);
    clear ();
    curs_set (CURSOR_NORMAL);

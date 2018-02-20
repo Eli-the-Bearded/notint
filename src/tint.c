@@ -72,6 +72,7 @@
 static bool shownext;
 static bool dottedlines;
 static int level = MINLEVEL - 1,shapecount[NUMSHAPES];
+static int traditional = FALSE;
 static char blockchar = ' ';
 
 /*
@@ -293,8 +294,13 @@ static void showstatus (engine_t *engine)
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
    for (i = 0; i < MAXDIGITS + 16; i++) out_putch (' ');
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
-   out_printf ("Efficiency   :");
-   snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
+   if(engine->rand_status < 0 ) {
+     out_printf ("Efficiency   :");
+     snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
+   } else {
+     out_printf ("Status count :");
+     snprintf (tmp,MAXDIGITS + 1,"%d",engine->rand_status);
+   }
    out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
    out_printf ("%s",tmp);
 }
@@ -498,11 +504,12 @@ static void savescores (int score)
 
 static void showhelp ()
 {
-   fprintf (stderr,"USAGE: tint [-h] [-l level] [-n] [-d] [-b char]\n");
+   fprintf (stderr,"USAGE: notint [-h] [-l level] [-n] [-d] [-b char]\n");
    fprintf (stderr,"  -h           Show this help message\n");
    fprintf (stderr,"  -l <level>   Specify the starting level (%d-%d)\n",MINLEVEL,MAXLEVEL);
    fprintf (stderr,"  -n           Draw next shape\n");
    fprintf (stderr,"  -d           Draw vertical dotted lines\n");
+   fprintf (stderr,"  -t           Play the traditional version\n");
    fprintf (stderr,"  -b <char>    Use this character to draw blocks instead of spaces\n");
    exit (EXIT_FAILURE);
 }
@@ -515,6 +522,9 @@ static void parse_options (int argc,char *argv[])
 		/* Help? */
 		if (strcmp (argv[i],"-h") == 0)
 		  showhelp ();
+		/* Help? */
+		else if (strcmp (argv[i],"-t") == 0)
+		  traditional = TRUE;
 		/* Level? */
 		else if (strcmp (argv[i],"-l") == 0)
 		  {
@@ -544,19 +554,24 @@ static void parse_options (int argc,char *argv[])
 		  }
 		i++;
 	 }
+
+   if( !traditional ) {
+      shownext = TRUE;
+   }
 }
 
 static void choose_level ()
 {
    char buf[NAMELEN];
 
-   do
-	 {
-		fprintf (stderr,"Choose a level to start [%d-%d]: ",MINLEVEL,MAXLEVEL);
-		fgets (buf,NAMELEN - 1,stdin);
-		buf[strlen (buf) - 1] = '\0';
-	 }
-   while (!str2int (&level,buf) || level < MINLEVEL || level > MAXLEVEL);
+   fprintf (stderr,"Choose a level to start [%d-%d]: ",MINLEVEL,MAXLEVEL);
+   fgets (buf,NAMELEN - 1,stdin);
+   buf[strlen (buf) - 1] = '\0';
+   if (!str2int (&level,buf) || level < MINLEVEL || level > MAXLEVEL) {
+      level = 1 + rand_value(-1, 8);
+      fprintf (stderr,"Okay, picked level %d\n",level);
+      sleep(1);
+   }
 }
 
           /***************************************************************************/
@@ -576,6 +591,9 @@ int main (int argc,char *argv[])
    shapecount[engine.curshape]++;
    parse_options (argc,argv);				/* must be called after initializing variables */
    if (level < MINLEVEL) choose_level ();
+   if(!traditional) {
+      engine_tweak (level, &engine);	/* must be called after level selected */
+   }
    io_init ();
    drawbackground ();
    in_timeout (DELAY);

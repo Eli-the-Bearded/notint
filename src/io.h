@@ -36,6 +36,12 @@
  * Colors
  */
 
+#ifndef COLOR_BLACK
+/* 
+ * Assume black is a good test for the first seven colors.
+ * curses.h on NetBSD defines all these, but curses.h on
+ * Linux does not.
+ */
 #define COLOR_BLACK     0                        /* Black */
 #define COLOR_RED       1                        /* Red */
 #define COLOR_GREEN     2                        /* Green */
@@ -44,6 +50,7 @@
 #define COLOR_MAGENTA   5                        /* Magenta */
 #define COLOR_CYAN      6                        /* Cyan */
 #define COLOR_WHITE     7                        /* White */
+#endif
 
 /*
  * Attributes

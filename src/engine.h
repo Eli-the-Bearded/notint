@@ -101,6 +101,11 @@ extern const shapes_t SHAPES;
 void engine_init (engine_t *engine,void (*score_function)(engine_t *));
 
 /*
+ * Tweak engine values for non-traditional
+ */
+void engine_tweak (int level, engine_t *engine);
+
+/*
  * Perform the given action on the specified tetris engine
  */
 void engine_move (engine_t *engine,action_t action);

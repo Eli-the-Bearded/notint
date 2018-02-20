@@ -256,8 +256,8 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    /* intialize values */
    engine->curx = 5;
    engine->cury = 1;
-   engine->curshape = rand_value (0, NUMSHAPES);
-   engine->nextshape = rand_value (0, NUMSHAPES);
+   engine->curshape = rand_value (-1, NUMSHAPES);
+   engine->nextshape = rand_value (-1, NUMSHAPES);
    engine->score = 0;
    engine->rand_status = 0;
    engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = 0;
@@ -267,6 +267,16 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    memset (engine->board,0,sizeof (board_t));
    for (i = 0; i < NUMCOLS; i++) engine->board[i][NUMROWS - 1] = engine->board[i][NUMROWS - 2] = WALL;
    for (i = 0; i < NUMROWS; i++) engine->board[0][i] = engine->board[NUMCOLS - 1][i] = engine->board[NUMCOLS - 2][i] = WALL;
+}
+
+/*
+ * Post options engine tweak.
+ */
+void engine_tweak (int level, engine_t *engine)
+{
+     engine->rand_status = (((level - 1)*STATUS_GROUP)%STATUS_MAX);
+     engine->curshape = rand_value(engine->rand_status, NUMSHAPES);
+     engine->nextshape = rand_value(engine->rand_status, NUMSHAPES);
 }
 
 /*
@@ -318,7 +328,7 @@ int engine_evaluate (engine_t *engine)
 		engine->status.efficiency >>= 1;
 		engine->status.dropcount = engine->status.rotations = engine->status.moves = 0;
 		/* intialize values */
-		engine->curx = 5;
+		engine->curx = 4+rand_value(-1,5);
 		engine->cury = 1;
 		engine->curshape = engine->nextshape;
 		engine->nextshape = rand_value (engine->rand_status, NUMSHAPES);
