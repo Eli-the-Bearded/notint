@@ -47,7 +47,7 @@
 static short color_map[NUM_COLORS];
 
 /* Maps attribute definitions onto their real definitions */
-static short attr_map[NUM_ATTRS];
+static int attr_map[NUM_ATTRS];
 
 /* Current attribute used on screen */
 static int out_attr;
