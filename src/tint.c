@@ -41,33 +41,6 @@
 #include "config.h"
 #include "engine.h"
 
-/*
- * Macros
- */
-
-/* Upper left corner of board */
-#define XTOP ((out_width () - NUMROWS - 3) >> 1)
-#define YTOP ((out_height () - NUMCOLS - 9) >> 1)
-
-/* Maximum digits in a number (i.e. number of digits in score, */
-/* number of blocks, etc. should not exceed this value */
-#define MAXDIGITS 5
-
-/* Number of levels in the game */
-#define MINLEVEL	1
-#define MAXLEVEL	9
-
-/* This calculates the time allowed to move a shape, before it is moved a row down */
-#define DELAY (1000000 / (level + 2))
-
-/* The score is multiplied by this to avoid losing precision */
-#define SCOREFACTOR 2
-
-/* This calculates the stored score value */
-#define SCOREVAL(x) (SCOREFACTOR * (x))
-
-/* This calculates the real (displayed) value of the score */
-#define GETSCORE(score) ((score) / SCOREFACTOR)
 
 static bool shownext;
 static bool dottedlines;
@@ -297,36 +270,58 @@ static void showstatus (engine_t *engine)
    if(engine->rand_status < 0 ) {
      out_printf ("Efficiency   :");
      snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
+     out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
+     out_printf ("%s",tmp);
    } else {
-     out_printf ("Status count :");
-     snprintf (tmp,MAXDIGITS + 1,"%d",engine->rand_status);
+     out_printf ("Status-count : %1d-%2d",
+		(engine->rand_status>>STATUS_SHIFT),
+		(engine->rand_status % STATUS_MOD)
+	);
    }
-   out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
-   out_printf ("%s",tmp);
 }
 
           /***************************************************************************/
           /***************************************************************************/
           /***************************************************************************/
 
-/* Header for scorefile */
-#define SCORE_HEADER	"Tint 0.02b (c) Abraham vd Merwe - Scores"
-
-/* Header for score title */
-static const char scoretitle[] = "\n\t   TINT HIGH SCORES\n\n\tRank   Score        Name\n\n";
-
-/* Length of a player's name */
-#define NAMELEN 20
-
-/* Number of scores allowed in highscore list */
-#define NUMSCORES 10
-
 typedef struct
 {
    char name[NAMELEN];
    int score;
+   int trad_mode;
    time_t timestamp;
 } score_t;
+
+/*
+ * Print one entry from the scores file
+ */
+static void print_scores(time_t curr, score_t *scores)
+{
+   char time_str_buf[TIME_STR_BUF], this;
+   int i;
+   time_t when;
+
+   fprintf (stderr,"%s",scoretitle);
+   i = 0;
+   while ((i < NUMSCORES) && (scores[i].score > 0))
+     {
+   	when = scores[i].timestamp;
+        this = (curr == when) ? '*' : ' ';
+	
+	strftime(time_str_buf, TIME_STR_BUF, "%Y‐%m‐%d", localtime(&when));
+
+	if(scores[i].trad_mode) {
+		fputs("-traditional- ", stderr);
+	} else {
+		fputs("- easy-tris - ", stderr);
+	}
+	fprintf (stderr,"%2d%c %7d       %-20s  %s\n",
+		i + 1,this,scores[i].score,
+		scores[i].name,time_str_buf);
+        i++;
+     }
+   fprintf (stderr,"\n");
+}
 
 static void getname (char *name)
 {
@@ -367,21 +362,26 @@ void showplayerstats (engine_t *engine)
 			GETSCORE (engine->score),engine->status.efficiency,GETSCORE (engine->score) / getsum ());
 }
 
+/*
+ * Create a new score file, if score > 0
+ */
 static void createscores (int score)
 {
    FILE *handle;
    int i,j;
    score_t scores[NUMSCORES];
    char header[strlen (SCORE_HEADER)+1];
-   if (score == 0) return;	/* No need saving this */
+   if (score < 1) return;	/* No need saving this */
    for (i = 1; i < NUMSCORES; i++)
 	 {
 		strcpy (scores[i].name,"None");
 		scores[i].score = -1;
+   		scores[0].trad_mode = 0;
 		scores[i].timestamp = 0;
 	 }
    getname (scores[0].name);
    scores[0].score = score;
+   scores[0].trad_mode = traditional;
    scores[0].timestamp = time (NULL);
    if ((handle = fopen (scorefile,"w")) == NULL) err1 ();
    strcpy (header,SCORE_HEADER);
@@ -393,19 +393,28 @@ static void createscores (int score)
 		if (j != 1) err2 ();
 		j = fwrite (&(scores[i].score),sizeof (int),1,handle);
 		if (j != 1) err2 ();
+		j = fwrite (&(scores[i].trad_mode),sizeof (int),1,handle);
+		if (j != 1) err2 ();
 		j = fwrite (&(scores[i].timestamp),sizeof (time_t),1,handle);
 		if (j != 1) err2 ();
 	 }
    fclose (handle);
 
-   fprintf (stderr,"%s",scoretitle);
-   fprintf (stderr,"\t  1* %7d        %s\n\n",score,scores[0].name);
+   print_scores(scores[0].timestamp, scores);
 }
 
 static int cmpscores (const void *a,const void *b)
 {
-   int result;
-   result = (int) ((score_t *) a)->score - (int) ((score_t *) b)->score;
+   int result, av, bv;
+   av = (int) ((score_t *) a)->score;
+   if ((int) ((score_t *) a)->trad_mode) {
+	av *= TRAD_ADJUST;
+   }
+   bv = (int) ((score_t *) b)->score;
+   if ((int) ((score_t *) b)->trad_mode) {
+	bv *= TRAD_ADJUST;
+   }
+   result = av - bv;
    /* a < b */
    if (result < 0) return 1;
    /* a > b */
@@ -420,6 +429,10 @@ static int cmpscores (const void *a,const void *b)
    return 0;
 }
 
+/*
+ * Try to save a score. Calls createscores() on read error of scorefile.
+ * createscores() is no-op for score <= 0
+ */
 static void savescores (int score)
 {
    FILE *handle;
@@ -457,6 +470,12 @@ static void savescores (int score)
 			 createscores (score);
 			 return;
 		  }
+		j = fread (&(scores[i].trad_mode),sizeof (int),1,handle);
+		if (j != 1)
+		  {
+			 createscores (score);
+			 return;
+		  }
 		j = fread (&(scores[i].timestamp),sizeof (time_t),1,handle);
 		if (j != 1)
 		  {
@@ -465,37 +484,37 @@ static void savescores (int score)
 		  }
 	 }
    fclose (handle);
-   if (score > scores[NUMSCORES - 1].score)
-	 {
-		getname (scores[NUMSCORES - 1].name);
-		scores[NUMSCORES - 1].score = score;
-		scores[NUMSCORES - 1].timestamp = tmp = time (NULL);
-	 }
-   qsort (scores,NUMSCORES,sizeof (score_t),cmpscores);
-   if ((handle = fopen (scorefile,"w")) == NULL) err2 ();
-   strcpy (header,SCORE_HEADER);
-   i = fwrite (header,strlen (SCORE_HEADER),1,handle);
-   if (i != 1) err2 ();
-   for (i = 0; i < NUMSCORES; i++)
-	 {
-		j = fwrite (scores[i].name,strlen (scores[i].name) + 1,1,handle);
-		if (j != 1) err2 ();
-		j = fwrite (&(scores[i].score),sizeof (int),1,handle);
-		if (j != 1) err2 ();
-		j = fwrite (&(scores[i].timestamp),sizeof (time_t),1,handle);
-		if (j != 1) err2 ();
-	 }
-   fclose (handle);
 
-   fprintf (stderr,"%s",scoretitle);
-   i = 0;
-   while ((i < NUMSCORES) && (scores[i].score != -1))
-	 {
-		j = scores[i].timestamp == tmp ? '*' : ' ';
-		fprintf (stderr,"\t %2d%c %7d        %s\n",i + 1,j,scores[i].score,scores[i].name);
-		i++;
-	 }
-   fprintf (stderr,"\n");
+   /* don't even consider writing the score file for -s mode */
+   if (score > 0)
+     {
+	   if (score > scores[NUMSCORES - 1].score)
+		 {
+			getname (scores[NUMSCORES - 1].name);
+			scores[NUMSCORES - 1].score = score;
+			scores[NUMSCORES - 1].trad_mode = traditional;
+			scores[NUMSCORES - 1].timestamp = tmp = time (NULL);
+		 }
+	   qsort (scores,NUMSCORES,sizeof (score_t),cmpscores);
+	   if ((handle = fopen (scorefile,"w")) == NULL) err2 ();
+	   strcpy (header,SCORE_HEADER);
+	   i = fwrite (header,strlen (SCORE_HEADER),1,handle);
+	   if (i != 1) err2 ();
+	   for (i = 0; i < NUMSCORES; i++)
+		 {
+			j = fwrite (scores[i].name,strlen (scores[i].name) + 1,1,handle);
+			if (j != 1) err2 ();
+			j = fwrite (&(scores[i].score),sizeof (int),1,handle);
+			if (j != 1) err2 ();
+			j = fwrite (&(scores[i].trad_mode),sizeof (int),1,handle);
+			if (j != 1) err2 ();
+			j = fwrite (&(scores[i].timestamp),sizeof (time_t),1,handle);
+			if (j != 1) err2 ();
+		 }
+	   fclose (handle);
+     }
+
+   print_scores(tmp,scores);
 }
 
           /***************************************************************************/
@@ -504,12 +523,15 @@ static void savescores (int score)
 
 static void showhelp ()
 {
-   fprintf (stderr,"USAGE: notint [-h] [-l level] [-n] [-d] [-b char]\n");
+   fprintf (stderr,"USAGE: notint -h\n");
+   fprintf (stderr,"or   : notint -s\n");
+   fprintf (stderr,"or   : notint [-t] [-l level] [-n] [-d] [-b char]\n");
    fprintf (stderr,"  -h           Show this help message\n");
    fprintf (stderr,"  -l <level>   Specify the starting level (%d-%d)\n",MINLEVEL,MAXLEVEL);
    fprintf (stderr,"  -n           Draw next shape\n");
    fprintf (stderr,"  -d           Draw vertical dotted lines\n");
    fprintf (stderr,"  -t           Play the traditional version\n");
+   fprintf (stderr,"  -s           Show high scores and exit\n");
    fprintf (stderr,"  -b <char>    Use this character to draw blocks instead of spaces\n");
    exit (EXIT_FAILURE);
 }
@@ -522,9 +544,17 @@ static void parse_options (int argc,char *argv[])
 		/* Help? */
 		if (strcmp (argv[i],"-h") == 0)
 		  showhelp ();
-		/* Help? */
+		/* High scores? */
+		else if (strcmp (argv[i],"-s") == 0)
+		 {
+		  savescores (-1);
+		  exit(EXIT_SUCCESS);
+		 }
+		/* Traditional Tetris? */
 		else if (strcmp (argv[i],"-t") == 0)
+		 {
 		  traditional = TRUE;
+		 }
 		/* Level? */
 		else if (strcmp (argv[i],"-l") == 0)
 		  {
@@ -645,6 +675,7 @@ int main (int argc,char *argv[])
 				  break;
 				  /* quit */
 				case 'q':
+				case 'Q':
 				  finished = TRUE;
 				  break;
 				  /* pause */
@@ -691,7 +722,7 @@ int main (int argc,char *argv[])
    /* Restore console settings and exit */
    io_close ();
    /* Don't bother the player if he want's to quit */
-   if (ch != 'q')
+   if (ch != 'q' && ch != 'Q')
 	 {
 		showplayerstats (&engine);
 		savescores (GETSCORE (engine.score));
