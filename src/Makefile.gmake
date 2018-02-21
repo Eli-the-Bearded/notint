@@ -44,11 +44,11 @@ endif
 
 CFLAGS += -Wall
 CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/$(PRG).scores\"
-LDLIBS = -lncurses
+LDLIBS = -lcurses
 
 OBJ = engine.o utils.o io.o tint.o
 SRC = $(OBJ:%.o=%.c)
-HEADERS = config.h engine.h io.h typedefs.h utils.h
+HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h
 PRG = notint
 
        ########### NOTHING TO EDIT BELOW THIS ###########
