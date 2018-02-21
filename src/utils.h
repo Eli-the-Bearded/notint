@@ -42,6 +42,11 @@ void rand_init ();
 int rand_value (int status, int range);
 
 /*
+ * Pick a new value for rand_status
+ */
+int update_rs (int old);
+
+/*
  * Convert an str to long. Returns TRUE if successful,
  * FALSE otherwise.
  */

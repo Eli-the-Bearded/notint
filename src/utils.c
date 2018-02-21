@@ -43,8 +43,8 @@ void rand_init ()
 }
 
 /*
- * Generate a random number within range, unless
- * status has us pick a mostly determinate value.
+ * With status < 0: Generate a random number within range
+ * Otherwise use status to pick a mostly determinate value.
  */
 int rand_value (int status, int range)
 {
@@ -52,11 +52,35 @@ int rand_value (int status, int range)
      return (random () % range);
    } else {
      int rc = status / STATUS_GROUP;
-     if((RANDOM_MAX / 80) < random()) {
-       rc = (rc == 6)? 0 : rc + 1;
+     int lucky = random () % 100;
+     if(lucky < PERCENT_RAND) {
+       rc = (random () % range);
+     } else {
+       rc = status >> STATUS_SHIFT;
      }
      return(rc);
    }
+}
+
+/*
+ * Pick a new value for rand_status
+ */
+int update_rs(int old)
+{
+  int shape;
+  int count;
+  if(old < 0) {
+    return(-1);
+  }
+
+  /* shape = old >> 16; */
+  count = old % STATUS_MOD;
+  if (count == 0) {
+    shape = rand_value(-1, NUMSHAPES) << STATUS_SHIFT;
+    count = 10 + rand_value(-1, STATUS_GROUP);
+    return( shape | count );
+  }
+  return(old - 1);
 }
 
 /*
