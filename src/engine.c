@@ -259,7 +259,7 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    engine->curshape = rand_value (-1, NUMSHAPES);
    engine->nextshape = rand_value (-1, NUMSHAPES);
    engine->score = 0;
-   engine->rand_status = 0;
+   engine->rand_status = -1;
    engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = 0;
    /* initialize shapes */
    memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
@@ -276,7 +276,9 @@ void engine_tweak (int level, engine_t *engine)
 {
      engine->rand_status = (((level - 1)*STATUS_GROUP)%STATUS_MAX);
      engine->curshape = rand_value(engine->rand_status, NUMSHAPES);
+     engine->rand_status = update_rs(engine->rand_status);
      engine->nextshape = rand_value(engine->rand_status, NUMSHAPES);
+     engine->rand_status = update_rs(engine->rand_status);
 }
 
 /*
@@ -328,11 +330,16 @@ int engine_evaluate (engine_t *engine)
 		engine->status.efficiency >>= 1;
 		engine->status.dropcount = engine->status.rotations = engine->status.moves = 0;
 		/* intialize values */
-		engine->curx = 4+rand_value(-1,5);
+		if(engine->rand_status < 0) {
+			engine->curx = 5;
+		} else {
+			/* go wild */
+			engine->curx = 4+rand_value(-1,5);
+		}
 		engine->cury = 1;
 		engine->curshape = engine->nextshape;
 		engine->nextshape = rand_value (engine->rand_status, NUMSHAPES);
-		engine->rand_status = UPDATE_RS(engine->rand_status);
+		engine->rand_status = update_rs(engine->rand_status);
 		/* initialize shapes */
 		memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
 		/* return games status */
