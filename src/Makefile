@@ -26,7 +26,7 @@ depends:
 $(PRG): $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) -o $@ $(LDLIBS)
 
-tags:
+tags: $(SRC) $(HEADERS)
 	ctags $(SRC) $(HEADERS)
 
 clean:
