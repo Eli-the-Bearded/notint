@@ -260,7 +260,7 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    engine->nextshape = rand_value (-1, NUMSHAPES);
    engine->score = 0;
    engine->rand_status = -1;
-   engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = 0;
+   engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = engine->status.lastclear = 0;
    /* initialize shapes */
    memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
    /* initialize board */
@@ -270,11 +270,22 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
 }
 
 /*
- * Post options engine tweak.
+ * Post-options engine tweak.
  */
 void engine_tweak (int level, engine_t *engine)
 {
-     engine->rand_status = (((level - 1)*STATUS_GROUP)%STATUS_MAX);
+     /* 
+      * In early versions, setting the level would determine first
+      * shape. Now setting the level merely blocks a particular
+      * shape from being first.
+      */
+     engine->rand_status = ((level - 1) % NUMSHAPES) << STATUS_SHIFT;
+     engine->rand_status = update_rs(engine->rand_status);
+
+      /*
+       * Pick first two pieces according to the easy-tris rules,
+       * replacing the engine_init choices.
+      */
      engine->curshape = rand_value(engine->rand_status, NUMSHAPES);
      engine->rand_status = update_rs(engine->rand_status);
      engine->nextshape = rand_value(engine->rand_status, NUMSHAPES);
@@ -319,9 +330,11 @@ int engine_evaluate (engine_t *engine)
    if (shape_bottom (engine->board,&engine->shapes[engine->curshape],engine->curx,engine->cury))
 	 {
 		/* increase score */
+		engine->status.lastclear = droplines (engine->board);
 		engine->score_function (engine);
 		/* update status information */
-		engine->status.droppedlines += droplines (engine->board);
+		engine->status.droppedlines += engine->status.lastclear;
+                engine->status.lastclear = 0;
 		engine->curx -= 5;
 		engine->curx = abs (engine->curx);
 		engine->status.rotations = 4 - engine->status.rotations;

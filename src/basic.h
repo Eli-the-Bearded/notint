@@ -7,18 +7,21 @@
 /* Number of blocks in each shape */
 #define NUMBLOCKS	4
 
-#define STATUS_GROUP    (20)			 /* needs to be < MOD */
-#define STATUS_MAX      (NUMSHAPES*STATUS_GROUP) /* no longer used */
-#define STATUS_SHIFT	(16)
-#define STATUS_MOD	(65536)			 /* 2^(STATUS_SHIFT) */
-#define PERCENT_RAND	(25)
-#define TRAD_ADJUST	(5)			 /* high score bonus */
+#define STATUS_GROUP    (20)		 /* GROUP+MIN to be < MOD */
+#define STATUS_MIN      (10)		 /* min number in group */
+#define STATUS_SHIFT	(16)		 /* make one int be two values */
+#define STATUS_MOD	(65536)		 /* 2^(STATUS_SHIFT) */
+#define PERCENT_RAND	(15)		 /* % pieces that are lucky */
+#define TRAD_ADJUST	(1)		 /* high score board bonus */
 
 /* Number of rows and columns in board */
 #define NUMROWS	23
 #define NUMCOLS	13
 
-/* Wall id - Arbitrary, but shouldn't have the same value as one of the colors */
+/* Wall id - Arbitrary, but shouldn't have the same value as one of the colors
+ * Colormasks:  01110000 background, 00000111 foreground
+ * 16 would be  00010000 or red background, black foreground
+ */
 #define WALL 16
 
 /* Header for scorefile */

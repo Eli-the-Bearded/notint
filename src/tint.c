@@ -46,6 +46,7 @@ static bool shownext;
 static bool dottedlines;
 static int level = MINLEVEL - 1,shapecount[NUMSHAPES];
 static int traditional = FALSE;
+static int quiet_scores = FALSE;
 static char blockchar = ' ';
 
 /*
@@ -54,6 +55,7 @@ static char blockchar = ' ';
 
 /* This function is responsible for increasing the score appropriately whenever
  * a block collides at the bottom of the screen (or the top of the heap */
+/* In easy-tris mode, you also get points for rows cleared. */
 static void score_function (engine_t *engine)
 {
    int score = SCOREVAL (level * (engine->status.dropcount + 1));
@@ -61,6 +63,9 @@ static void score_function (engine_t *engine)
    if (shownext) score /= 2;
    if (dottedlines) score /= 2;
 
+   if (engine->rand_status >= 0) {
+      score += level * engine->status.lastclear;
+   }
    engine->score += score;
 }
 
@@ -301,6 +306,9 @@ static void print_scores(time_t curr, score_t *scores)
    int i;
    time_t when;
 
+   if (quiet_scores)
+	return;
+
    fprintf (stderr,"%s",scoretitle);
    i = 0;
    while ((i < NUMSCORES) && (scores[i].score > 0))
@@ -326,6 +334,16 @@ static void print_scores(time_t curr, score_t *scores)
 static void getname (char *name)
 {
    struct passwd *pw = getpwuid (geteuid ());
+
+   if (quiet_scores)
+         {
+		if ( pw != NULL )
+			strncpy (name,pw->pw_name,NAMELEN);
+		else
+			strncpy (name,"(mystery player)",NAMELEN);
+		return;
+         }
+    
 
    fprintf (stderr,"Congratulations! You have a new high score.\n");
    fprintf (stderr,"Enter your name [%s]: ",pw != NULL ? pw->pw_name : "");
@@ -723,10 +741,11 @@ int main (int argc,char *argv[])
    io_close ();
    /* Don't bother the player if he want's to quit */
    if (ch != 'q' && ch != 'Q')
-	 {
-		showplayerstats (&engine);
-		savescores (GETSCORE (engine.score));
-	 }
+	showplayerstats (&engine);
+   else
+	quiet_scores = TRUE;
+
+   savescores (GETSCORE (engine.score));
    exit (EXIT_SUCCESS);
 }
 
