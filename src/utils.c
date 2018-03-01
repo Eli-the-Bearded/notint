@@ -67,17 +67,19 @@ int rand_value (int status, int range)
  */
 int update_rs(int old)
 {
-  int shape;
+  int shape, prev_shape;;
   int count;
   if(old < 0) {
     return(-1);
   }
 
-  /* shape = old >> 16; */
+  prev_shape = old >> STATUS_SHIFT;
   count = old % STATUS_MOD;
   if (count == 0) {
-    shape = rand_value(-1, NUMSHAPES) << STATUS_SHIFT;
-    count = 10 + rand_value(-1, STATUS_GROUP);
+    do {
+	    shape = rand_value(-1, NUMSHAPES) << STATUS_SHIFT;
+    } while ( shape == prev_shape );
+    count = STATUS_MIN + rand_value(-1, STATUS_GROUP);
     return( shape | count );
   }
   return(old - 1);
