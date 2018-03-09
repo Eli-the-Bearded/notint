@@ -1,4 +1,68 @@
 
+====== Eli the Bearded Notint Notes ======
+==========================================
+
+I couldn't decide originally between calling this eastris, easytris,
+notint, or something else. Eventually I settled on notint and have
+easytris as a game mode. The current modes:
+
+A. Easytris
+
+   This was my impetus for hacking the source. I wanted to explore
+   the "easy" game version where you get the same piece over and over
+   for a while. I find this harder than traditional, FWIW.
+
+   As currently implemented for a stretch of 10 and 30 pieces in a row
+   there's an 85% chance of each piece being the current designated
+   selection. The 1x4 long piece is easiest to use. The 2x2 square is
+   surprisingly unforgiving. To keep you on your toes, when getting
+   the same piece over and over, this version randomizes the column
+   that a piece starts falling from.
+
+   Scoring starts the same as traditional, with the next piece preview
+   penalty in effect. But there is also a bonus for lines cleared,
+   since traditional scoring is rather heavy on the "how far it
+   dropped" side.
+
+B. Traditional
+
+   Game play as in the original tint version. Score is mostly based
+   on how far a piece was "dropped" from, with penalties for grid
+   and next piece preview.
+
+C. Zen
+
+   Game play is as in the original. But speed never increases or
+   decreases (unless you manually change the level with 'a' or 
+   UP, which will wrap around from level 9 speeds back to level 1).
+   Scoring is completely changed. All that matters is lines cleared.
+
+I had originally tried to keep the scores merged, but with zen it is
+clear that each mode should have it's own high score list.
+
+FUTURE
+------
+
+Some better way of system versus $HOME directory scorefile. Compiled-in
+fixed string is not very flexible.
+
+Consider a "challenge" mode that starts with a partially filled field
+which then refreshes after certain "win" criteria is met. I believe
+the original arcade version had something like that, with "ten lines
+cleared" being the win criteria.
+
+BUILD
+-----
+I prefer "make", but the gmake version of the Makefile can do cross
+compiles. There is a scoreconvert tool, that tries to convert score
+files from older verstions. Probably no one wants to use it, but
+it might be good reference code for the future.
+
+March 2018
+
+====== Original Tint Notes ======
+=================================
+
 ROTATION
 --------
 STEP 1:
