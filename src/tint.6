@@ -1,4 +1,4 @@
-.TH TINT 6 "June 23, 2010"
+.TH NOTINT 6 "March 8, 2018"
 .\" Please adjust this date whenever revising the manpage.
 .\"
 .\" Some roff macros, for reference:
@@ -11,40 +11,123 @@
 .\" .br        insert line break
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
+.\" But hey, why not give a quick ref:
+.\" .SH	text   issue a Section Header
+.\" .B  text   bold text
+.\" .I  text   italic text
+.\" .BI text   bold / italic alteration text
+.\" .RI text   roman / italic alteration text
+.\" .TP text   labeled indented paragraph
+.\" .RE        restore indent
+.\" .P         start new paragraph
 .SH NAME
-tint \- clone of the original tint
+notint \- fork of the original tint
 .SH SYNOPSIS
-.B tint
-.RI [ -h ]
+.B notint
+.RI [ -e | -t | -z ]
 .RI [ -l\  level ]
 .RI [ -n ]
 .RI [ -d ]
 .RI [ -b\  char ]
+.br
+.B notint
+.RI [ -h | -s | -v]
 .SH DESCRIPTION
 This manual page documents briefly the
-.B tint
-clone. As with all games (and especially with tint), you have to play it,
+.B notint
+fork. As with all games (and especially with notint), you have to play it,
 not read about it.
 .SH OPTIONS
-A summary of options is included below.
-For a complete description, see the NOTES file in /usr/share/doc/tint.
+Game play mode options (only one mode can be played at a time):
 .TP
-.B \-h
-Show summary of options.
+.B \-e
+Play in
+.I easytris
+mode, which has does not use normal random piece selection.
+.TP
+.B \-t
+Play in
+.I traditional
+mode, which is unchanged from the normal rules.
+.TP
+.B \-z
+Play in
+.I zen
+mode, which stops the game speed from advancing and makes the score
+all (and only) about lines cleared.
+.RE
+.sp
+Other game options:
 .TP
 .B \-l <level>
 Specify the starting level (1-9). The higher the level you're starting from,
-the faster you'll earn points.
+the faster the pieces move. Except for 
+.I zen
+mode, you'll earn points faster, too.
 .TP
 .B \-n
-Draw next shape. When the next shape is drawn, you might find the game to be
-easier, but it will be slower to earn points.
+Draw next shape. In
+.I traditional
+mode this comes at a score penalty.
 .TP
 .B \-d
-Draw dotted lines.
+Draw dotted lines. In the
+.I traditional
+mode this comes at a score penalty.
 .TP
 .B \-b <char>
 Use the specified character (instead of spaces) to draw blocks.
+.RE
+.sp
+Non-game play options:
+.TP
+.B \-h
+Show summary of options and exit.
+.TP
+.B \-s
+Show high scores and exit.
+.TP
+.B \-v
+Print the version and exit.
+.SH CONTROLS
+The most important controls are
+.TP
+.BI j " or " LEFT
+Move piece left.
+.TP
+.BI l " or " RIGHT
+Move piece right.
+.TP
+.BI k " or " RETURN
+Rotate piece.
+.TP
+.BI SPACE " or " DOWN
+Drop piece.
+.RE
+.sp
+Additional controls:
+.TP
+.BI a " or " UP
+Advance level (stops at 9, except in
+.I zen
+mode, which wraps around back to 1).
+.TP
+.B d
+Toggle draw grid.
+.TP
+.B p
+Pause game.
+.TP
+.BI q " or " Q
+Quit game.
+.TP
+.B s
+Toggle show next.
 .SH AUTHOR
 This manual page was written by Abraham van der Merwe <abz@debian.org>,
 for the Debian GNU/Linux system (but may be used by others).
+.P
+This game was witten by Robert Lemmen, Marcello Mamino, and
+Benjamin "Eli the Bearded" Griffin.
+The original game it is based on was by Alexey Pajitnov,
+Dmitry Pavlovsky, and Vadim Gerasimov,
