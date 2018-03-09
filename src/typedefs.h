@@ -69,4 +69,16 @@
 #define RANDOM_MAX RAND_MAX
 #endif
 
+
+/* Length of a player's name */
+#define NAMELEN 20
+
+typedef struct
+{
+   char name[NAMELEN];
+   int score;
+   int trad_mode;
+   time_t timestamp;
+} score_t;
+
 #endif	/* #ifndef TYPEDEFS_H */

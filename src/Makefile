@@ -26,11 +26,16 @@ depends:
 $(PRG): $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) -o $@ $(LDLIBS)
 
+# scorecovert is a second-class program, not built by default,
+# nor included in the tags file.
+scorecovert: scorecovert.c typedefs.h basic.h
+	$(CC) $(LDFLAGS) $(OBJ) -o $@ $(LDLIBS)
+	
 tags: $(SRC) $(HEADERS)
 	ctags $(SRC) $(HEADERS)
 
 clean:
-	rm -f depends *~ $(OBJ) $(PRG)
+	rm -f depends *~ $(OBJ) $(PRG) scorecovert
 
 distclean: clean
 	rm -f tags core

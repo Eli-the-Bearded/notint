@@ -35,8 +35,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "typedefs.h"
+#define NEED_GAMETYPE
+
+#include "basic.h"
 #include "utils.h"
+/* included in utils.: #include "typedefs.h" */
 #include "io.h"
 #include "config.h"
 #include "engine.h"
@@ -45,7 +48,7 @@
 static bool shownext;
 static bool dottedlines;
 static int level = MINLEVEL - 1,shapecount[NUMSHAPES];
-static int traditional = FALSE;
+static int gamemode = GAME_TRADITIONAL;
 static int quiet_scores = FALSE;
 static char blockchar = ' ';
 
@@ -54,16 +57,25 @@ static char blockchar = ' ';
  */
 
 /* This function is responsible for increasing the score appropriately whenever
- * a block collides at the bottom of the screen (or the top of the heap */
-/* In easy-tris mode, you also get points for rows cleared. */
+ * a block collides at the bottom of the screen (or the top of the heap).
+ * In easy-tris mode, you also get points for rows cleared.
+ * In zen mode, you only get points for rows cleared.
+ */
 static void score_function (engine_t *engine)
 {
-   int score = SCOREVAL (level * (engine->status.dropcount + 1));
+   int score;
 
-   if (shownext) score /= 2;
-   if (dottedlines) score /= 2;
+   if(engine->game_mode == GAME_ZEN) {
+      /* score is saved at a multiple real value */
+      engine->score += SCOREVAL (engine->status.lastclear);
+      return;
+   }
 
-   if (engine->rand_status >= 0) {
+   score = SCOREVAL (level * (engine->status.dropcount + 1));
+   if (shownext) score /= SCORE_PENALTY;
+   if (dottedlines) score /= SCORE_PENALTY;
+
+   if(engine->game_mode == GAME_EASYTRIS) {
       score += level * engine->status.lastclear;
    }
    engine->score += score;
@@ -146,7 +158,7 @@ static void drawbackground ()
    out_gotoxy (1,YTOP + 12);  out_printf ("k: Rotate");
    out_gotoxy (1,YTOP + 13);  out_printf ("s: Draw next");
    out_gotoxy (1,YTOP + 14);  out_printf ("d: Toggle lines");
-   out_gotoxy (1,YTOP + 15);  out_printf ("a: Speed up");
+   out_gotoxy (1,YTOP + 15);  out_printf ("a: Advance level");
    out_gotoxy (1,YTOP + 16);  out_printf ("q: Quit");
    out_gotoxy (2,YTOP + 17);  out_printf ("SPACE: Drop");
    out_gotoxy (3,YTOP + 19);  out_printf ("Next:");
@@ -167,8 +179,17 @@ static void showstatus (engine_t *engine)
    int i,sum = getsum ();
    out_setattr (ATTR_OFF);
    out_setcolor (COLOR_WHITE,COLOR_BLACK);
-   out_gotoxy (1,YTOP + 1);   out_printf ("Your level: %d",level);
-   out_gotoxy (1,YTOP + 2);   out_printf ("Full lines: %d",engine->status.droppedlines);
+   if (engine->game_mode == GAME_ZEN) {
+      out_gotoxy (1,YTOP + 1);   out_printf ("Your level is ");
+      out_setattr (ATTR_BOLD);
+      out_setcolor (COLOR_YELLOW,COLOR_BLACK);
+      out_printf ("ZEN");
+      out_setattr (ATTR_OFF);
+      out_setcolor (COLOR_WHITE,COLOR_BLACK);
+   } else {
+      out_gotoxy (1,YTOP + 1);   out_printf ("Your level: %d",level);
+      out_gotoxy (1,YTOP + 2);   out_printf ("Full lines: %d",engine->status.droppedlines);
+   }
    out_gotoxy (2,YTOP + 4);   out_printf ("Score");
    out_setattr (ATTR_BOLD);
    out_setcolor (COLOR_YELLOW,COLOR_BLACK);
@@ -272,12 +293,13 @@ static void showstatus (engine_t *engine)
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
    for (i = 0; i < MAXDIGITS + 16; i++) out_putch (' ');
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
-   if(engine->rand_status < 0 ) {
+   if (engine->game_mode == GAME_TRADITIONAL) {
      out_printf ("Efficiency   :");
      snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
      out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
      out_printf ("%s",tmp);
-   } else {
+   } else 
+   if (engine->game_mode == GAME_EASYTRIS) {
      out_printf ("Status-count : %1d-%2d",
 		(engine->rand_status>>STATUS_SHIFT),
 		(engine->rand_status % STATUS_MOD)
@@ -289,73 +311,92 @@ static void showstatus (engine_t *engine)
           /***************************************************************************/
           /***************************************************************************/
 
-typedef struct
-{
-   char name[NAMELEN];
-   int score;
-   int trad_mode;
-   time_t timestamp;
-} score_t;
-
 /*
  * Print one entry from the scores file
  */
-static void print_scores(time_t curr, score_t *scores)
+static void print_scores(time_t curr, int mode, score_t *scores)
 {
    char time_str_buf[TIME_STR_BUF], this;
-   int i;
+   int i, offset, show_as;
    time_t when;
 
    if (quiet_scores)
 	return;
 
-   fprintf (stderr,"%s",scoretitle);
+   fprintf (stderr,"%s",scorecols);
+   fprintf (stderr,"%s",scorebetw);
    i = 0;
-   while ((i < NUMSCORES) && (scores[i].score > 0))
+   while ((i < NUMSCORES))
      {
-   	when = scores[i].timestamp;
-        this = (curr == when) ? '*' : ' ';
+        offset = i + NUMSCORES * mode;
+   	when = scores[offset].timestamp;
+        this = ((curr > 0) && (curr == when)) ? '*' : ' ';
 	
-	strftime(time_str_buf, TIME_STR_BUF, "%Y‐%m‐%d", localtime(&when));
+	if (scores[offset].score < 1)
+	   {
+		snprintf(time_str_buf, TIME_STR_BUF, "Never");
+		show_as = 0;
+	   }
+	else
+	   {
+		strftime(time_str_buf, TIME_STR_BUF, "%Y‐%m‐%d", localtime(&when));
+		show_as = scores[offset].score;
+	   }
 
-	if(scores[i].trad_mode) {
-		fputs("-traditional- ", stderr);
-	} else {
-		fputs("- easy-tris - ", stderr);
-	}
-	fprintf (stderr,"%2d%c %7d       %-20s  %s\n",
-		i + 1,this,scores[i].score,
-		scores[i].name,time_str_buf);
+	switch (scores[offset].trad_mode)
+	   {
+	      case GAME_EASYTRIS:
+	      case GAME_TRADITIONAL:
+	      case GAME_ZEN:
+	      	fputs(gametype[scores[offset].trad_mode], stderr);
+	      	break;
+
+	      default:
+	      	fputs(gametype[GAME_UNKNOWN], stderr);
+	      	break;
+
+	   }
+	fprintf (stderr,"| %2d |%7d| %c | %-20s | %s\n",
+		i + 1,show_as,this,scores[offset].name,time_str_buf);
         i++;
+
+	if(scores[offset].score < 0) {
+		break;
+	}
      }
-   fprintf (stderr,"\n");
+   fprintf (stderr,"%s",scorebetw);
 }
 
 static void getname (char *name)
 {
    struct passwd *pw = getpwuid (geteuid ());
+   char *noname = "(mystery player)";
 
-   if (quiet_scores)
+   if (!quiet_scores)
          {
-		if ( pw != NULL )
-			strncpy (name,pw->pw_name,NAMELEN);
-		else
-			strncpy (name,"(mystery player)",NAMELEN);
-		return;
+	     fprintf (stderr,"Congratulations! You have a new high score.\n");
+	     fprintf (stderr,"Enter your name [%s]: ",pw != NULL ? pw->pw_name : "");
+
+	     fgets (name,NAMELEN - 1,stdin);
+	     name[strlen (name) - 1] = '\0';
          }
     
 
-   fprintf (stderr,"Congratulations! You have a new high score.\n");
-   fprintf (stderr,"Enter your name [%s]: ",pw != NULL ? pw->pw_name : "");
 
-   fgets (name,NAMELEN - 1,stdin);
-   name[strlen (name) - 1] = '\0';
+   if (quiet_scores || !strlen (name))
+       {
+	   if(pw != NULL)
+		 {
+			strncpy (name,pw->pw_name,NAMELEN);
+		 }
+             else
+		 {
+			strncpy (name,noname,NAMELEN);
+		 }
+	   name[NAMELEN - 1] = '\0';
+       }
 
-   if (!strlen (name) && pw != NULL)
-	 {
-		strncpy (name,pw->pw_name,NAMELEN);
-		name[NAMELEN - 1] = '\0';
-	 }
+   fprintf (stderr,"\n");
 }
 
 static void err1 ()
@@ -374,38 +415,51 @@ void showplayerstats (engine_t *engine)
 {
    fprintf (stderr,
 			"\n\t   PLAYER STATISTICS\n\n\t"
-			"Score       %11d\n\t"
+			"Score       %11d\n",
+			GETSCORE (engine->score));
+
+   if(engine->game_mode != GAME_TRADITIONAL)
+	return;
+
+   fprintf (stderr,     "\t"
 			"Efficiency  %11d\n\t"
 			"Score ratio %11d\n",
-			GETSCORE (engine->score),engine->status.efficiency,GETSCORE (engine->score) / getsum ());
+			engine->status.efficiency,GETSCORE (engine->score) / getsum ());
 }
 
 /*
- * Create a new score file, if score > 0
+ * Create a new score file, if score at least 1
  */
 static void createscores (int score)
 {
    FILE *handle;
-   int i,j;
-   score_t scores[NUMSCORES];
-   char header[strlen (SCORE_HEADER)+1];
+   int i,j, mode, offset;
+   score_t scores[BIG_NUMSCORES];
+   char header[MAX_HEADER];
    if (score < 1) return;	/* No need saving this */
-   for (i = 1; i < NUMSCORES; i++)
+   mode = MODE_LOW - 1;
+   offset = gamemode * NUMSCORES;
+
+   for (i = 1; i < BIG_NUMSCORES; i++)
 	 {
+		if(0 == (i % NUMSCORES)) {
+			mode ++;
+		}
 		strcpy (scores[i].name,"None");
 		scores[i].score = -1;
-   		scores[0].trad_mode = 0;
+   		scores[i].trad_mode = mode;
 		scores[i].timestamp = 0;
 	 }
-   getname (scores[0].name);
-   scores[0].score = score;
-   scores[0].trad_mode = traditional;
-   scores[0].timestamp = time (NULL);
+   getname (scores[offset].name);
+   scores[offset].score = score;
+   scores[offset].trad_mode = gamemode;
+   scores[offset].timestamp = time (NULL);
+
    if ((handle = fopen (scorefile,"w")) == NULL) err1 ();
-   strcpy (header,SCORE_HEADER);
-   i = fwrite (header,strlen (SCORE_HEADER),1,handle);
+   strcpy (header,SCORE_MAGIC_NUMBER);
+   i = fwrite (header,strlen (SCORE_MAGIC_NUMBER),1,handle);
    if (i != 1) err2 ();
-   for (i = 0; i < NUMSCORES; i++)
+   for (i = 0; i < BIG_NUMSCORES; i++)
 	 {
 		j = fwrite (scores[i].name,strlen (scores[i].name) + 1,1,handle);
 		if (j != 1) err2 ();
@@ -418,31 +472,46 @@ static void createscores (int score)
 	 }
    fclose (handle);
 
-   print_scores(scores[0].timestamp, scores);
+   /* Just print the current mode's scores */
+   print_scores(scores[0].timestamp, gamemode, scores);
 }
 
 static int cmpscores (const void *a,const void *b)
 {
    int result, av, bv;
-   av = (int) ((score_t *) a)->score;
-   if ((int) ((score_t *) a)->trad_mode) {
-	av *= TRAD_ADJUST;
-   }
-   bv = (int) ((score_t *) b)->score;
-   if ((int) ((score_t *) b)->trad_mode) {
-	bv *= TRAD_ADJUST;
-   }
+   time_t result_time, at, bt;
+
+   av = (int) ((score_t *) a)->trad_mode;
+   bv = (int) ((score_t *) b)->trad_mode;
    result = av - bv;
+
+   /* (REVERSE) Sort by gamemmode first */
+   /* a < b */
+   if (result < 0) return -1;
+   /* a > b */
+   if (result > 0) return 1;
+   /* a = b */
+
+   /* Then by score */
+   av = (int) ((score_t *) a)->score;
+   bv = (int) ((score_t *) b)->score;
+   result = av - bv;
+
    /* a < b */
    if (result < 0) return 1;
    /* a > b */
    if (result > 0) return -1;
    /* a = b */
-   result = (time_t) ((score_t *) a)->timestamp - (time_t) ((score_t *) b)->timestamp;
+
+   /* Then by timestamp (REVERSE again) */
+   at = (int) ((score_t *) a)->timestamp;
+   bt = (int) ((score_t *) b)->timestamp;
+   result_time = at - bt;
+
    /* a is older */
-   if (result < 0) return -1;
+   if (result_time < 0) return -1;
    /* b is older */
-   if (result > 0) return 1;
+   if (result_time > 0) return 1;
    /* timestamps is equal */
    return 0;
 }
@@ -455,21 +524,25 @@ static void savescores (int score)
 {
    FILE *handle;
    int i,j,ch;
-   score_t scores[NUMSCORES];
-   char header[strlen (SCORE_HEADER)+1];
+   score_t scores[BIG_NUMSCORES];
+   char header[MAX_HEADER];
    time_t tmp = 0;
    if ((handle = fopen (scorefile,"r")) == NULL)
 	 {
 		createscores (score);
+		if(score < 0)
+			printf("NO SCOREFILE TO PRINT\n");
 		return;
 	 }
-   i = fread (header,strlen (SCORE_HEADER),1,handle);
-   if ((i != 1) || (strncmp (SCORE_HEADER,header,strlen (SCORE_HEADER)) != 0))
+   i = fread (header,strlen (SCORE_MAGIC_NUMBER),1,handle);
+   if ((i != 1) || (strncmp (SCORE_MAGIC_NUMBER,header,strlen (SCORE_MAGIC_NUMBER)) != 0))
 	 {
 		createscores (score);
+		if(score < 0)
+			printf("INCOMPATIBLE SCOREFILE\n");
 		return;
 	 }
-   for (i = 0; i < NUMSCORES; i++)
+   for (i = 0; i < BIG_NUMSCORES; i++)
 	 {
 		j = 0;
 		while ((ch = fgetc (handle)) != '\0')
@@ -504,21 +577,30 @@ static void savescores (int score)
    fclose (handle);
 
    /* don't even consider writing the score file for -s mode */
-   if (score > 0)
+   if (score < 0)
      {
-	   if (score > scores[NUMSCORES - 1].score)
+	   fprintf(stderr,"%s",scoretitle);
+           print_scores(tmp,GAME_EASYTRIS,scores);
+           print_scores(tmp,GAME_TRADITIONAL,scores);
+           print_scores(tmp,GAME_ZEN,scores);
+     }
+   else
+     {
+	   int offset = gamemode * ( NUMSCORES + 1 ) -1;
+	   if (score > scores[offset].score)
 		 {
-			getname (scores[NUMSCORES - 1].name);
-			scores[NUMSCORES - 1].score = score;
-			scores[NUMSCORES - 1].trad_mode = traditional;
-			scores[NUMSCORES - 1].timestamp = tmp = time (NULL);
+			getname (scores[offset].name);
+			scores[offset].score = score;
+			scores[offset].trad_mode = gamemode;
+			scores[offset].timestamp = tmp = time (NULL);
 		 }
-	   qsort (scores,NUMSCORES,sizeof (score_t),cmpscores);
+
+	   qsort (scores,BIG_NUMSCORES,sizeof (score_t),cmpscores);
 	   if ((handle = fopen (scorefile,"w")) == NULL) err2 ();
-	   strcpy (header,SCORE_HEADER);
-	   i = fwrite (header,strlen (SCORE_HEADER),1,handle);
+	   strcpy (header,SCORE_MAGIC_NUMBER);
+	   i = fwrite (header,strlen (SCORE_MAGIC_NUMBER),1,handle);
 	   if (i != 1) err2 ();
-	   for (i = 0; i < NUMSCORES; i++)
+	   for (i = 0; i < BIG_NUMSCORES; i++)
 		 {
 			j = fwrite (scores[i].name,strlen (scores[i].name) + 1,1,handle);
 			if (j != 1) err2 ();
@@ -530,9 +612,9 @@ static void savescores (int score)
 			if (j != 1) err2 ();
 		 }
 	   fclose (handle);
+           print_scores(tmp,gamemode,scores);
      }
 
-   print_scores(tmp,scores);
 }
 
           /***************************************************************************/
@@ -543,12 +625,14 @@ static void showhelp ()
 {
    fprintf (stderr,"USAGE: notint -h\n");
    fprintf (stderr,"or   : notint -s\n");
-   fprintf (stderr,"or   : notint [-t] [-l level] [-n] [-d] [-b char]\n");
+   fprintf (stderr,"or   : notint [-t|-e|-z] [-l level] [-n] [-d] [-b char]\n");
    fprintf (stderr,"  -h           Show this help message\n");
    fprintf (stderr,"  -l <level>   Specify the starting level (%d-%d)\n",MINLEVEL,MAXLEVEL);
    fprintf (stderr,"  -n           Draw next shape\n");
    fprintf (stderr,"  -d           Draw vertical dotted lines\n");
+   fprintf (stderr,"  -e           Play the easytris version\n");
    fprintf (stderr,"  -t           Play the traditional version\n");
+   fprintf (stderr,"  -z           Play the zen version\n");
    fprintf (stderr,"  -s           Show high scores and exit\n");
    fprintf (stderr,"  -b <char>    Use this character to draw blocks instead of spaces\n");
    exit (EXIT_FAILURE);
@@ -568,10 +652,20 @@ static void parse_options (int argc,char *argv[])
 		  savescores (-1);
 		  exit(EXIT_SUCCESS);
 		 }
+		/* Easytris? */
+		else if (strcmp (argv[i],"-e") == 0)
+		 {
+		  gamemode = GAME_EASYTRIS;
+		 }
+		/* Zen? */
+		else if (strcmp (argv[i],"-z") == 0)
+		 {
+		  gamemode = GAME_ZEN;
+		 }
 		/* Traditional Tetris? */
 		else if (strcmp (argv[i],"-t") == 0)
 		 {
-		  traditional = TRUE;
+		  gamemode = GAME_TRADITIONAL;
 		 }
 		/* Level? */
 		else if (strcmp (argv[i],"-l") == 0)
@@ -603,7 +697,7 @@ static void parse_options (int argc,char *argv[])
 		i++;
 	 }
 
-   if( !traditional ) {
+   if (gamemode != GAME_TRADITIONAL) {
       shownext = TRUE;
    }
 }
@@ -611,6 +705,11 @@ static void parse_options (int argc,char *argv[])
 static void choose_level ()
 {
    char buf[NAMELEN];
+
+   if (gamemode == GAME_ZEN) {
+      level = GAME_ZEN_LEVEL;
+      return;
+   }
 
    fprintf (stderr,"Choose a level to start [%d-%d]: ",MINLEVEL,MAXLEVEL);
    fgets (buf,NAMELEN - 1,stdin);
@@ -639,9 +738,7 @@ int main (int argc,char *argv[])
    shapecount[engine.curshape]++;
    parse_options (argc,argv);				/* must be called after initializing variables */
    if (level < MINLEVEL) choose_level ();
-   if(!traditional) {
-      engine_tweak (level, &engine);	/* must be called after level selected */
-   }
+   engine_tweak (level, gamemode, &engine);	/* must be called after level selected */
    io_init ();
    drawbackground ();
    in_timeout (DELAY);
@@ -689,6 +786,12 @@ int main (int argc,char *argv[])
 					   level++;
 					   in_timeout (DELAY);
 					}
+				  else if (engine.game_mode == GAME_ZEN)
+					{
+                                           /* wrap around on zen */
+					   level = MINLEVEL;
+					   in_timeout (DELAY);
+					}
 				  else out_beep ();
 				  break;
 				  /* quit */
@@ -723,7 +826,9 @@ int main (int argc,char *argv[])
 				  break;
 				  /* shape at bottom, next one released */
 				case 0:
-				  if ((level < MAXLEVEL) && ((engine.status.droppedlines / 10) > level))
+				  if ((level < MAXLEVEL) &&
+				      ((engine.status.droppedlines / 10) > level) &&
+				      (engine.game_mode != GAME_ZEN))
 					{
 					   level++;
 					   in_timeout (DELAY);

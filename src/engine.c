@@ -258,6 +258,7 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    engine->cury = 1;
    engine->curshape = rand_value (-1, NUMSHAPES);
    engine->nextshape = rand_value (-1, NUMSHAPES);
+   engine->game_mode = GAME_TRADITIONAL;
    engine->score = 0;
    engine->rand_status = -1;
    engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = engine->status.lastclear = 0;
@@ -272,8 +273,13 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
 /*
  * Post-options engine tweak.
  */
-void engine_tweak (int level, engine_t *engine)
+void engine_tweak (int level, int mode, engine_t *engine)
 {
+     engine->game_mode = mode;
+
+     if(engine->game_mode != GAME_EASYTRIS) 
+	return;
+
      /* 
       * In early versions, setting the level would determine first
       * shape. Now setting the level merely blocks a particular
@@ -343,11 +349,11 @@ int engine_evaluate (engine_t *engine)
 		engine->status.efficiency >>= 1;
 		engine->status.dropcount = engine->status.rotations = engine->status.moves = 0;
 		/* intialize values */
-		if(engine->rand_status < 0) {
-			engine->curx = 5;
-		} else {
+		if(engine->game_mode == GAME_EASYTRIS) {
 			/* go wild */
 			engine->curx = 4+rand_value(-1,5);
+		} else {
+			engine->curx = 5;
 		}
 		engine->cury = 1;
 		engine->curshape = engine->nextshape;

@@ -42,6 +42,7 @@
  */
 #define UPDATE_RS(_rs)	((_rs) < 0 ? -1 : \
 			   ((_rs) == STATUS_MAX ? 0 : (_rs) + 1))
+
 /*
  * Type definitions
  */
@@ -76,8 +77,8 @@ typedef struct engine_struct
    int curx,cury;									/* coordinates of current piece */
    int curshape,nextshape;							/* current & next shapes */
    int score;										/* score */
-   int rand_status;
-   	/* -1 : regular; 0 & up: shape counter */
+   int rand_status;									/* -1 : regular; 0 & up: shape counter */
+   int game_mode;									/* traditional, easy, zen */
    shapes_t shapes;									/* shapes */
    board_t board;									/* board */
    status_t status;									/* current status of shapes */
@@ -104,7 +105,7 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *));
 /*
  * Tweak engine values for non-traditional
  */
-void engine_tweak (int level, engine_t *engine);
+void engine_tweak (int level, int mode, engine_t *engine);
 
 /*
  * Perform the given action on the specified tetris engine
