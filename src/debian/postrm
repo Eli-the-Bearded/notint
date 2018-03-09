@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-scorefile="/var/games/tint.scores"
+scorefile="/var/games/notint.scores"
 
 if [ "$1" = "purge" ]
 then

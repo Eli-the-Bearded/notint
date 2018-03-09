@@ -42,11 +42,13 @@ ifeq ($(CC),colorgcc)
 endif
 endif
 
+SCORE_TEMPLATE = $(PRG).scores
+
 CFLAGS += -Wall
-CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/$(PRG).scores\"
+CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/$(SCORE_TEMPLATE)\"
 LDLIBS = -lcurses
 
-OBJ = engine.o utils.o io.o tint.o
+OBJ = engine.o utils.o io.o tint.o version.o
 SRC = $(OBJ:%.o=%.c)
 HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h
 PRG = notint
@@ -75,6 +77,12 @@ with-depends: $(PRG)
 $(PRG): $(OBJ)
 	$(CROSS)$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
+$(SCORE_TEMPLATE): scoreconvert
+	echo y | ./scoreconvert /dev/null $(SCORE_TEMPLATE)
+
+scorecovert: scorecovert.c typedefs.h basic.h
+	$(CC) $(LDFLAGS) $(OBJ) -o $@ $(LDLIBS)
+	
 tags:
 	ctags $(SRC) $(HEADERS)
 

@@ -56,7 +56,11 @@ BUILD
 I prefer "make", but the gmake version of the Makefile can do cross
 compiles. There is a scoreconvert tool, that tries to convert score
 files from older verstions. Probably no one wants to use it, but
-it might be good reference code for the future.
+it might be good reference code for the future. It also can be used
+to create a pre-seeded high score list using author names.
+
+The build and game has been tested on Linux and NetBSD with gcc. The
+original source did not play well with NetBSD curses.
 
 March 2018
 

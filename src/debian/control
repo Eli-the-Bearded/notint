@@ -1,17 +1,14 @@
-Source: tint
+Source: notint
 Section: games
 Priority: optional
-Maintainer: Mario Lang <mlang@debian.org>
+Maintainer: Eli the Bearded <info@qaz.wtf>
 Build-Depends: debhelper (>= 7), libncurses5-dev
 Standards-Version: 3.9.1
 
-Package: tint
+Package: notint
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: TINT Is Not Tetris(tm) ...at least the name isn't
- As the title suggests, this is a clone of the original tetris game
- written by Alexey Pajitnov, Dmitry Pavlovsky, and Vadim Gerasimov.
- .
- The game is as close to the original as possible, but there are a few
- differences.  Nevertheless, it's probably the closest to the original
- that you'll ever find in the UNIX world...
+Description: NOTINT Is Not Tetris(tm) or TINT...
+ Offers additional game play options not found in TINT. Easytris
+ has fairly predictable piece drops (but ends up harder). Zen is
+ just about the line count, nothing else matters to the score.

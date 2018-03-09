@@ -19,8 +19,12 @@ you-know-what :P
 
 Here is a list of people who have written code for tint:
 
+  Abraham vd Merwe	(primary author)
   Robert Lemmen
   Marcello Mamino
 
 Thanks for your contributions.
 
+notint is a fork of tint by Benjamin "Eli the Bearded" Griffin.
+
+See debian/copyright for the licensing terms.

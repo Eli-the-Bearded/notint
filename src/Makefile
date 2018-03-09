@@ -4,19 +4,20 @@
 # comples).
 # 
 localstatedir = $(HOME)
+SCORE_TEMPLATE = $(PRG).scores
 CFLAGS += -Wall
-CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/.$(PRG).scores\"
+CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/.$(SCORE_TEMPLATE)\"
 LDLIBS = -lcurses
 
-OBJ = engine.o utils.o io.o tint.o
-SRC = engine.c utils.c io.c tint.c
+OBJ = engine.o utils.o io.o tint.o version.o
+SRC = engine.c utils.c io.c tint.c version.c
 HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h
 PRG = notint
 
 
 .PHONY: all clean distclean
 
-all: $(PRG)
+all: $(PRG) $(SCORE_TEMPLATE)
 
 depends:
 	rm -f depends
@@ -25,6 +26,9 @@ depends:
 
 $(PRG): $(OBJ)
 	$(CC) $(LDFLAGS) $(OBJ) -o $@ $(LDLIBS)
+
+$(SCORE_TEMPLATE): scoreconvert
+	echo y | ./scoreconvert /dev/null $(SCORE_TEMPLATE)
 
 # scorecovert is a second-class program, not built by default,
 # nor included in the tags file.

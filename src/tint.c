@@ -419,11 +419,15 @@ void showplayerstats (engine_t *engine)
 			GETSCORE (engine->score));
 
    if(engine->game_mode != GAME_TRADITIONAL)
-	return;
+	{
+		fprintf(stderr, "\n\n");
+		return;
+	}
 
    fprintf (stderr,     "\t"
 			"Efficiency  %11d\n\t"
-			"Score ratio %11d\n",
+			"Score ratio %11d\n"
+			"\n\n",
 			engine->status.efficiency,GETSCORE (engine->score) / getsum ());
 }
 
@@ -586,7 +590,7 @@ static void savescores (int score)
      }
    else
      {
-	   int offset = gamemode * ( NUMSCORES + 1 ) -1;
+	   int offset = (gamemode + 1) * NUMSCORES -1;
 	   if (score > scores[offset].score)
 		 {
 			getname (scores[offset].name);
@@ -594,6 +598,12 @@ static void savescores (int score)
 			scores[offset].trad_mode = gamemode;
 			scores[offset].timestamp = tmp = time (NULL);
 		 }
+            else if (!quiet_scores)
+		 {
+			fprintf (stderr, "Sorry, not a high score worthy effort.\n\n");
+		 }
+
+             
 
 	   qsort (scores,BIG_NUMSCORES,sizeof (score_t),cmpscores);
 	   if ((handle = fopen (scorefile,"w")) == NULL) err2 ();
@@ -623,8 +633,7 @@ static void savescores (int score)
 
 static void showhelp ()
 {
-   fprintf (stderr,"USAGE: notint -h\n");
-   fprintf (stderr,"or   : notint -s\n");
+   fprintf (stderr,"USAGE: notint [-h|-s|-v]\n");
    fprintf (stderr,"or   : notint [-t|-e|-z] [-l level] [-n] [-d] [-b char]\n");
    fprintf (stderr,"  -h           Show this help message\n");
    fprintf (stderr,"  -l <level>   Specify the starting level (%d-%d)\n",MINLEVEL,MAXLEVEL);
@@ -638,6 +647,8 @@ static void showhelp ()
    exit (EXIT_FAILURE);
 }
 
+void showversion(/* in version.c */);
+
 static void parse_options (int argc,char *argv[])
 {
    int i = 1;
@@ -647,6 +658,10 @@ static void parse_options (int argc,char *argv[])
 		if (strcmp (argv[i],"-h") == 0)
 		  showhelp ();
 		/* High scores? */
+		else if (strcmp (argv[i],"-v") == 0)
+		 {
+		  showversion ();
+		 }
 		else if (strcmp (argv[i],"-s") == 0)
 		 {
 		  savescores (-1);
