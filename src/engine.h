@@ -70,18 +70,23 @@ typedef struct
    int efficiency;
    int droppedlines;
    int lastclear;
+   int challengestart;
+   int challengeblocks;
+   int challengeblocks_prev;
+   int nonchallengeblocks;
 } status_t;
 
 typedef struct engine_struct
 {
-   int curx,cury;									/* coordinates of current piece */
-   int curshape,nextshape;							/* current & next shapes */
-   int score;										/* score */
-   int rand_status;									/* -1 : regular; 0 & up: shape counter */
-   int game_mode;									/* traditional, easy, zen */
-   shapes_t shapes;									/* shapes */
-   board_t board;									/* board */
-   status_t status;									/* current status of shapes */
+   int level;						/* game level */
+   int curx,cury;					/* coordinates of current piece */
+   int curshape,nextshape;				/* current & next shapes */
+   int score;						/* score */
+   int rand_status;					/* -1 : regular; 0 & up: shape counter */
+   int game_mode;					/* traditional, easy, zen */
+   shapes_t shapes;					/* shapes */
+   board_t board;					/* board */
+   status_t status;					/* current status of shapes */
    void (*score_function)(struct engine_struct *);	/* score function */
 } engine_t;
 
@@ -108,12 +113,19 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *));
 void engine_tweak (int level, int mode, engine_t *engine);
 
 /*
+ * Set up a game board and update status for a level appropriate
+ * challenge.
+ */
+void engine_chalset (engine_t *engine);
+
+/*
  * Perform the given action on the specified tetris engine
  */
 void engine_move (engine_t *engine,action_t action);
 
 /*
- * Evaluate the status of the specified tetris engine
+ * Evaluate the status of the specified tetris engine. In challenge mode,
+ * might completely reset the board.
  *
  * OUTPUT:
  *   1 = shape moved down one line

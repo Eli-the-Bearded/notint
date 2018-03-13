@@ -60,6 +60,8 @@ const shapes_t SHAPES =
    { COLOR_RED,     6, FALSE, { { -1,  0 }, {  0,  0 }, {  1,  0 }, {  2,  0 } } }
 };
 
+static board_t blank_board;
+
 /*
  * Functions
  */
@@ -222,12 +224,10 @@ static int shape_drop (board_t board,shape_t *shape,int x,int *y)
 /* This removes all the rows on the board that is completely filled with blocks */
 static int droplines (board_t board)
 {
-   int i,x,y,ny,status,droppedlines;
+   int x,y,ny,status,droppedlines;
    board_t newboard;
    /* initialize new board */
-   memset (newboard,0,sizeof (board_t));
-   for (i = 0; i < NUMCOLS; i++) newboard[i][NUMROWS - 1] = newboard[i][NUMROWS - 2] = WALL;
-   for (i = 0; i < NUMROWS; i++) newboard[0][i] = newboard[NUMCOLS - 1][i] = newboard[NUMCOLS - 2][i] = WALL;
+   memcpy (newboard,blank_board,sizeof (board_t));
    /* ... */
    ny = NUMROWS - 3;
    droppedlines = 0;
@@ -247,6 +247,23 @@ static int droplines (board_t board)
 }
 
 /*
+ * This counts the blocks on the board after applying a bitmask
+ * eg CHALLENGE_MASK finds only challenge blocks.
+ */
+static int countblocks (int mask, board_t board)
+{
+   int r, c, count = 0;
+   /* row 0, col 0, row -1, row -2, col -1, and col -1 all walls */
+   for (r = 1; r < NUMROWS - 3; r++) {
+	for (c = 1; c < NUMCOLS - 3; c++) {
+		if (mask & board[c][r])
+			count ++;
+	}
+   }
+   return count;
+}
+
+/*
  * Initialize specified tetris engine
  */
 void engine_init (engine_t *engine,void (*score_function)(engine_t *))
@@ -261,13 +278,63 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    engine->game_mode = GAME_TRADITIONAL;
    engine->score = 0;
    engine->rand_status = -1;
-   engine->status.moves = engine->status.rotations = engine->status.dropcount = engine->status.efficiency = engine->status.droppedlines = engine->status.lastclear = 0;
+   engine->status.moves =
+	engine->status.rotations =
+	engine->status.dropcount =
+	engine->status.efficiency =
+	engine->status.droppedlines =
+	engine->status.lastclear =
+	engine->status.challengestart = 
+	engine->status.challengeblocks =
+	engine->status.challengeblocks_prev =
+        engine->status.nonchallengeblocks =
+		0;
    /* initialize shapes */
    memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
+
    /* initialize board */
    memset (engine->board,0,sizeof (board_t));
    for (i = 0; i < NUMCOLS; i++) engine->board[i][NUMROWS - 1] = engine->board[i][NUMROWS - 2] = WALL;
    for (i = 0; i < NUMROWS; i++) engine->board[0][i] = engine->board[NUMCOLS - 1][i] = engine->board[NUMCOLS - 2][i] = WALL;
+   
+   /* and save a copy for resets */
+   memcpy (blank_board,engine->board,sizeof (board_t));
+/*
+ * There's a double wall at the right and bottom:
+ *
+ *  ROW    0  1  2  3  4  5  6  7  8  9 10 11 12    COL
+ *
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     0
+ *        10 02 00 00 00 00 00 00 00 00 03 10 10     1
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     2
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     3
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     4
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     5
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     6
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     7
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     8
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10     9
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    10
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    11
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    12
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    13
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    14
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    15
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    16
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    17
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    18
+ *        10 00 00 00 00 00 00 00 00 00 00 10 10    19
+ *        10 04 00 00 00 00 00 00 00 00 05 10 10    20
+ *        10 10 10 10 10 10 10 10 10 10 10 10 10    21
+ *        10 10 10 10 10 10 10 10 10 10 10 10 10    22
+ *
+ * AND the top row (0) is off the screen.
+ *
+ *  engine->board[ 1][01]  = 2  left top corner
+ *  engine->board[10][01]  = 3  right top corner
+ *  engine->board[ 1][20]  = 4  left bottom corner
+ *  engine->board[10][20]  = 5  right bottom corner
+ */
 }
 
 /*
@@ -275,9 +342,16 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
  */
 void engine_tweak (int level, int mode, engine_t *engine)
 {
+     engine->level = level;
      engine->game_mode = mode;
 
-     if(engine->game_mode != GAME_EASYTRIS) 
+     if (engine->game_mode == GAME_CHALLENGE) 
+        {
+	    engine_chalset (engine);
+	    return;
+        }
+
+     if (engine->game_mode != GAME_EASYTRIS) 
 	return;
 
      /* 
@@ -296,6 +370,35 @@ void engine_tweak (int level, int mode, engine_t *engine)
      engine->rand_status = update_rs(engine->rand_status);
      engine->nextshape = rand_value(engine->rand_status, NUMSHAPES);
      engine->rand_status = update_rs(engine->rand_status);
+}
+
+/*
+ * Set up a game board and update status for a level appropriate
+ * challenge.
+ */
+void engine_chalset (engine_t *engine)
+{
+   int r, c;
+   /* these are really sucky proof-of-concept levels */
+   for (c = 1; c < 8; c++)
+      {
+	for (r = 12 + c; r < 21; r++)
+	   {
+		if (engine->level > 7)
+		   {
+			if ((0 == (r % (engine->level / 3))) || (0 == (c % (engine->level / 3))))
+				 engine->board[c][r] = (CHALLENGE_MASK | c);
+		   }
+		else
+		   {
+			if (0 == (r % engine->level)) engine->board[c][r] = (CHALLENGE_MASK | c);
+		   }
+	   }
+      }
+   engine->status.challengestart =
+	engine->status.challengeblocks =
+	engine->status.challengeblocks_prev =
+		countblocks (CHALLENGE_MASK, engine->board);
 }
 
 /*
@@ -324,7 +427,8 @@ void engine_move (engine_t *engine,action_t action)
 }
 
 /*
- * Evaluate the status of the specified tetris engine
+ * Evaluate the status of the specified tetris engine. In challenge mode, might
+ * reset the level and challenge.
  *
  * OUTPUT:
  *   1 = shape moved down one line
@@ -333,11 +437,34 @@ void engine_move (engine_t *engine,action_t action)
  */
 int engine_evaluate (engine_t *engine)
 {
+   int need_reset = FALSE;
+
    if (shape_bottom (engine->board,&engine->shapes[engine->curshape],engine->curx,engine->cury))
 	 {
 		/* increase score */
 		engine->status.lastclear = droplines (engine->board);
+                if (engine->game_mode == GAME_CHALLENGE)
+                    {
+			engine->status.challengeblocks = countblocks (CHALLENGE_MASK, engine->board);
+			if(!engine->status.challengeblocks)
+			    {
+				engine->status.nonchallengeblocks = countblocks ( COLOR_MASK, engine->board);
+				/* level may effect score, just collect data now, then
+				 * score, then up level and reset
+				 */
+				need_reset = TRUE;
+			    }
+		    }
+
 		engine->score_function (engine);
+
+		if (need_reset)
+		    {
+			memcpy (engine->board,blank_board,sizeof (board_t));
+			engine->level ++;
+	                engine_chalset (engine);
+		    }
+
 		/* update status information */
 		engine->status.droppedlines += engine->status.lastclear;
                 engine->status.lastclear = 0;

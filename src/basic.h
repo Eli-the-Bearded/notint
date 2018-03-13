@@ -7,6 +7,7 @@
 /* Number of blocks in each shape */
 #define NUMBLOCKS	4
 
+/* Used by easytris mode */
 #define STATUS_GROUP    (20)		 /* GROUP+MIN to be < MOD */
 #define STATUS_MIN      (10)		 /* min number in group */
 #define STATUS_SHIFT	(16)		 /* make one int be two values */
@@ -15,6 +16,7 @@
 #define TRAD_ADJUST	(1)		 /* high score board bonus */
 
 /* Number of rows and columns in board */
+/* includes rows and columns that are out of play */
 #define NUMROWS	23
 #define NUMCOLS	13
 
@@ -24,13 +26,21 @@
  */
 #define WALL 16
 
+/* 
+ * Challenge mode blocks are displayed with a different character, but 
+ * the same colors; "color" is the value saved in the game board array
+ */
+#define COLOR_MASK 	0x77
+#define CHALLENGE_MASK	0x80
+
 /* Headers for scorefile */
 /* original tint */
 #define SCORE_HEADER_TINT	"Tint 0.02b (c) Abraham vd Merwe - Scores"
 /* first gen notint */
 #define SCORE_HEADER		"notint scorefile"
 /* current */
-#define  SCORE_MAGIC_NUMBER	"<notint scorefile version=2>"
+#define  SCORE_MAGIC_NUMBER_1	"<notint scorefile version=2>"
+#define  SCORE_MAGIC_NUMBER	"<notint scorefile version=3>"
 
 /* Longer than any "magic number" header in any recognized format,
  * but less than shortest legit score file.
@@ -49,7 +59,7 @@ static const char scorebetw[]  = "-------------+----+-------+---+---------------
 #define NUMSCORES 10
 
 /* NUMSCORES for each game mode */
-#define BIG_NUMSCORES (3*NUMSCORES)
+#define BIG_NUMSCORES (4*NUMSCORES)
 
 /* How much space to use for a printable date */
 /* YYYY-MM-DD HH:MM:SS 
@@ -70,8 +80,13 @@ static const char scorebetw[]  = "-------------+----+-------+---+---------------
 #define GAME_EASYTRIS		0
 #define GAME_TRADITIONAL	1
 #define GAME_ZEN		2
+#define GAME_CHALLENGE		3
 /* index to furture proof entry (so increase as game modes go up */
-#define GAME_UNKNOWN		3
+#define GAME_UNKNOWN		4
+
+/* lowest and highest game_mode values; high only used in scoreconvert */
+#define MODE_LOW		0
+#define MODE_HIGH		3
 
 #ifdef NEED_GAMETYPE
 /* Used in high score display, and shared between two different programs.
@@ -82,15 +97,12 @@ static char *gametype[] = {
 	"- easy-tris -", 
 	"-traditional-", 
 	"- - -zen- - -",
+	"- challenge -",
 
 	/* future proof */
 	"***unknown***",
    };
 #endif
-
-/* lowest and highest game_mode values; used in scoreconvert */
-#define MODE_LOW	0
-#define MODE_HIGH	2
 
 /* Zen game is perpetually at this level.
  * (unless explicitly changed.)
@@ -112,7 +124,7 @@ static char *gametype[] = {
 #define YTOP ((out_height () - NUMCOLS - 9) >> 1)
 
 /* This calculates the time allowed to move a shape, before it is moved a row down */
-#define DELAY (1000000 / (level + 2))
+#define DELAY (1000000 / (engine.level + 2))
 
 /* This calculates the stored score value */
 #define SCOREVAL(x) (SCORE_FACTOR * (x))

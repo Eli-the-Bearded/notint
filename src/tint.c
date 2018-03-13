@@ -47,10 +47,12 @@
 
 static bool shownext;
 static bool dottedlines;
-static int level = MINLEVEL - 1,shapecount[NUMSHAPES];
+static int shapecount[NUMSHAPES];
+static int start_level = MINLEVEL - 1;
 static int gamemode = GAME_TRADITIONAL;
 static int quiet_scores = FALSE;
 static char blockchar = ' ';
+static char challchar = '+';
 
 /*
  * Functions
@@ -65,18 +67,35 @@ static void score_function (engine_t *engine)
 {
    int score;
 
-   if(engine->game_mode == GAME_ZEN) {
+   if (engine->game_mode == GAME_ZEN) {
       /* score is saved at a multiple real value */
       engine->score += SCOREVAL (engine->status.lastclear);
       return;
    }
 
-   score = SCOREVAL (level * (engine->status.dropcount + 1));
+   if (engine->game_mode == GAME_CHALLENGE) {
+     	if (engine->status.challengeblocks == engine->status.challengeblocks_prev)
+	   {
+		/* penalty for clearing a line without any challenge blocks */
+      		engine->score -= SCOREVAL (engine->status.lastclear);
+	   }
+     	else if (0 == engine->status.challengeblocks)
+	   {
+		/* bonus for clearing all of the challenge blocks */
+      		engine->score += SCOREVAL (engine->status.challengestart);
+                /* and penalty for any other blocks remaining */
+      		engine->score -= SCOREVAL (engine->status.nonchallengeblocks);
+	   }
+		
+        engine->status.challengeblocks_prev = engine->status.challengeblocks;
+   }
+
+   score = SCOREVAL (engine->level * (engine->status.dropcount + 1));
    if (shownext) score /= SCORE_PENALTY;
    if (dottedlines) score /= SCORE_PENALTY;
 
    if(engine->game_mode == GAME_EASYTRIS) {
-      score += level * engine->status.lastclear;
+      score += engine->level * engine->status.lastclear;
    }
    engine->score += score;
 }
@@ -85,11 +104,15 @@ static void score_function (engine_t *engine)
 static void drawboard (board_t board)
 {
    int x,y;
+   int color, chall;
    out_setattr (ATTR_OFF);
+   
    for (y = 1; y < NUMROWS - 1; y++) for (x = 0; x < NUMCOLS - 1; x++)
 	 {
 		out_gotoxy (XTOP + x * 2,YTOP + y);
-		switch (board[x][y])
+                color = (board[x][y] & COLOR_MASK);
+                chall = (board[x][y] & CHALLENGE_MASK);
+		switch (color)
 		  {
 			 /* Wall */
 		   case WALL:
@@ -116,9 +139,17 @@ static void drawboard (board_t board)
 			 break;
 			 /* Block */
 		   default:
-			 out_setcolor (COLOR_BLACK,board[x][y]);
-			 out_putch (blockchar);
-			 out_putch (blockchar);
+			 out_setcolor (COLOR_BLACK,color);
+			 if ( chall )
+			   {
+			 	out_putch (challchar);
+			 	out_putch (challchar);
+			   }
+			 else
+			   {
+			 	out_putch (blockchar);
+			 	out_putch (blockchar);
+			   }
 		  }
 	 }
    out_setattr (ATTR_OFF);
@@ -141,8 +172,8 @@ static void drawnext (int shapenum,int x,int y)
 	 {
 		out_gotoxy (x + SHAPES[shapenum].block[i].x * 2 + ofs[shapenum].x,
 					y + SHAPES[shapenum].block[i].y + ofs[shapenum].y);
-		out_putch (' ');
-		out_putch (' ');
+		out_putch (blockchar);
+		out_putch (blockchar);
 	 }
 }
 
@@ -187,7 +218,7 @@ static void showstatus (engine_t *engine)
       out_setattr (ATTR_OFF);
       out_setcolor (COLOR_WHITE,COLOR_BLACK);
    } else {
-      out_gotoxy (1,YTOP + 1);   out_printf ("Your level: %d",level);
+      out_gotoxy (1,YTOP + 1);   out_printf ("Your level: %d",engine->level);
       out_gotoxy (1,YTOP + 2);   out_printf ("Full lines: %d",engine->status.droppedlines);
    }
    out_gotoxy (2,YTOP + 4);   out_printf ("Score");
@@ -293,18 +324,26 @@ static void showstatus (engine_t *engine)
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
    for (i = 0; i < MAXDIGITS + 16; i++) out_putch (' ');
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
-   if (engine->game_mode == GAME_TRADITIONAL) {
-     out_printf ("Efficiency   :");
-     snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
-     out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
-     out_printf ("%s",tmp);
-   } else 
-   if (engine->game_mode == GAME_EASYTRIS) {
-     out_printf ("Status-count : %1d-%2d",
-		(engine->rand_status>>STATUS_SHIFT),
-		(engine->rand_status % STATUS_MOD)
-	);
-   }
+
+   switch (engine->game_mode)
+     {
+   	case GAME_TRADITIONAL:
+	     out_printf ("Efficiency   :");
+	     snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
+	     out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
+	     out_printf ("%s",tmp);
+	     break;
+   	case GAME_EASYTRIS:
+	     out_printf ("Status-count : %1d-%2d",
+			(engine->rand_status>>STATUS_SHIFT),
+			(engine->rand_status % STATUS_MOD)
+		);
+	     break;
+   	case GAME_CHALLENGE:
+	     out_printf ("Challenge    : %3d", engine->status.challengeblocks);
+	     break;
+     }
+
 }
 
           /***************************************************************************/
@@ -348,6 +387,7 @@ static void print_scores(time_t curr, int mode, score_t *scores)
 	      case GAME_EASYTRIS:
 	      case GAME_TRADITIONAL:
 	      case GAME_ZEN:
+	      case GAME_CHALLENGE:
 	      	fputs(gametype[scores[offset].trad_mode], stderr);
 	      	break;
 
@@ -432,19 +472,14 @@ void showplayerstats (engine_t *engine)
 }
 
 /*
- * Create a new score file, if score at least 1
+ * Blank high score data structure.
  */
-static void createscores (int score)
+static void initscores (score_t *scores)
 {
-   FILE *handle;
-   int i,j, mode, offset;
-   score_t scores[BIG_NUMSCORES];
-   char header[MAX_HEADER];
-   if (score < 1) return;	/* No need saving this */
+   int i, mode;
    mode = MODE_LOW - 1;
-   offset = gamemode * NUMSCORES;
 
-   for (i = 1; i < BIG_NUMSCORES; i++)
+   for (i = 0; i < BIG_NUMSCORES; i++)
 	 {
 		if(0 == (i % NUMSCORES)) {
 			mode ++;
@@ -454,6 +489,23 @@ static void createscores (int score)
    		scores[i].trad_mode = mode;
 		scores[i].timestamp = 0;
 	 }
+}
+
+/*
+ * Create a new score file, if score at least 1
+ */
+static void createscores (int score)
+{
+   FILE *handle;
+   int i,j, offset;
+   score_t scores[BIG_NUMSCORES];
+   char header[MAX_HEADER];
+   if (score < 1) return;	/* No need saving this */
+
+   /* first score for gamemode */
+   offset = gamemode * NUMSCORES;
+
+   initscores (scores);
    getname (scores[offset].name);
    scores[offset].score = score;
    scores[offset].trad_mode = gamemode;
@@ -529,8 +581,10 @@ static void savescores (int score)
    FILE *handle;
    int i,j,ch;
    score_t scores[BIG_NUMSCORES];
+   int expect_scores;
    char header[MAX_HEADER];
    time_t tmp = 0;
+
    if ((handle = fopen (scorefile,"r")) == NULL)
 	 {
 		createscores (score);
@@ -538,15 +592,38 @@ static void savescores (int score)
 			printf("NO SCOREFILE TO PRINT\n");
 		return;
 	 }
+
+   /* SCORE_MAGIC_NUMBER and SCORE_MAGIC_NUMBER_1 have same length by design */
    i = fread (header,strlen (SCORE_MAGIC_NUMBER),1,handle);
-   if ((i != 1) || (strncmp (SCORE_MAGIC_NUMBER,header,strlen (SCORE_MAGIC_NUMBER)) != 0))
+   if (i != 1)
 	 {
 		createscores (score);
+		if(score < 0)
+			printf("CANNOT READ SCOREFILE\n");
+		return;
+	 }
+   if (strncmp (SCORE_MAGIC_NUMBER_1,header,strlen (SCORE_MAGIC_NUMBER_1)) == 0)
+	 {
+		/* this version has trad, easy, and zen but no challenge */
+	 	expect_scores = BIG_NUMSCORES - NUMSCORES;
+		if(score < 0)
+			printf("OLDER SCOREFILE; MISSING SOME SCORES\n");
+	 }
+   else if (strncmp (SCORE_MAGIC_NUMBER,header,strlen (SCORE_MAGIC_NUMBER)) == 0)
+	 {
+	 	expect_scores = BIG_NUMSCORES;
+	 }
+   else 
+	 {
 		if(score < 0)
 			printf("INCOMPATIBLE SCOREFILE\n");
 		return;
 	 }
-   for (i = 0; i < BIG_NUMSCORES; i++)
+
+   if (BIG_NUMSCORES != expect_scores)
+		initscores (scores);
+
+   for (i = 0; i < expect_scores; i++)
 	 {
 		j = 0;
 		while ((ch = fgetc (handle)) != '\0')
@@ -583,13 +660,16 @@ static void savescores (int score)
    /* don't even consider writing the score file for -s mode */
    if (score < 0)
      {
+	   /* print each of the game mode score lists */
 	   fprintf(stderr,"%s",scoretitle);
            print_scores(tmp,GAME_EASYTRIS,scores);
            print_scores(tmp,GAME_TRADITIONAL,scores);
            print_scores(tmp,GAME_ZEN,scores);
+           print_scores(tmp,GAME_CHALLENGE,scores);
      }
    else
      {
+	   /* last score for gamemode */
 	   int offset = (gamemode + 1) * NUMSCORES -1;
 	   if (score > scores[offset].score)
 		 {
@@ -622,6 +702,8 @@ static void savescores (int score)
 			if (j != 1) err2 ();
 		 }
 	   fclose (handle);
+
+	   /* just print this mode's score list */
            print_scores(tmp,gamemode,scores);
      }
 
@@ -634,16 +716,25 @@ static void savescores (int score)
 static void showhelp ()
 {
    fprintf (stderr,"USAGE: notint [-h|-s|-v]\n");
-   fprintf (stderr,"or   : notint [-t|-e|-z] [-l level] [-n] [-d] [-b char]\n");
+   fprintf (stderr,"or   : notint [-c|-e|-t|-z] [-l level] [-n] [-d] [-b char]\n");
+
+   fprintf (stderr,"Non-game play flags (show and exit)\n");
    fprintf (stderr,"  -h           Show this help message\n");
-   fprintf (stderr,"  -l <level>   Specify the starting level (%d-%d)\n",MINLEVEL,MAXLEVEL);
-   fprintf (stderr,"  -n           Draw next shape\n");
-   fprintf (stderr,"  -d           Draw vertical dotted lines\n");
+   fprintf (stderr,"  -s           Show high scores\n");
+   fprintf (stderr,"  -v           Show game version\n");
+
+   fprintf (stderr,"Game mode\n");
+   fprintf (stderr,"  -c           Play the challenge version\n");
    fprintf (stderr,"  -e           Play the easytris version\n");
    fprintf (stderr,"  -t           Play the traditional version\n");
    fprintf (stderr,"  -z           Play the zen version\n");
-   fprintf (stderr,"  -s           Show high scores and exit\n");
+
+   fprintf (stderr,"Game options\n");
    fprintf (stderr,"  -b <char>    Use this character to draw blocks instead of spaces\n");
+   fprintf (stderr,"  -d           Draw vertical dotted lines\n");
+   fprintf (stderr,"  -l <level>   Specify the starting level (%d-%d)\n",MINLEVEL,MAXLEVEL);
+   fprintf (stderr,"  -n           Draw next shape\n");
+
    exit (EXIT_FAILURE);
 }
 
@@ -667,6 +758,11 @@ static void parse_options (int argc,char *argv[])
 		  savescores (-1);
 		  exit(EXIT_SUCCESS);
 		 }
+		/* Challenge? */
+		else if (strcmp (argv[i],"-c") == 0)
+		 {
+		  gamemode = GAME_CHALLENGE;
+		 }
 		/* Easytris? */
 		else if (strcmp (argv[i],"-e") == 0)
 		 {
@@ -686,8 +782,8 @@ static void parse_options (int argc,char *argv[])
 		else if (strcmp (argv[i],"-l") == 0)
 		  {
 			 i++;
-			 if (i >= argc || !str2int (&level,argv[i])) showhelp ();
-			 if ((level < MINLEVEL) || (level > MAXLEVEL))
+			 if (i >= argc || !str2int (&start_level,argv[i])) showhelp ();
+			 if ((start_level < MINLEVEL) || (start_level > MAXLEVEL))
 			   {
 				  fprintf (stderr,"You must specify a level between %d and %d\n",MINLEVEL,MAXLEVEL);
 				  exit (EXIT_FAILURE);
@@ -702,6 +798,8 @@ static void parse_options (int argc,char *argv[])
 		  {
 		    i++;
 		    if (i >= argc || strlen(argv[i]) < 1) showhelp();
+		    if( challchar == argv[i][0] )
+		    		challchar = blockchar;
 		    blockchar = argv[i][0];
 		  }
 		else
@@ -712,9 +810,10 @@ static void parse_options (int argc,char *argv[])
 		i++;
 	 }
 
-   if (gamemode != GAME_TRADITIONAL) {
-      shownext = TRUE;
-   }
+   if ((gamemode == GAME_EASYTRIS) || (gamemode == GAME_ZEN))
+      {
+	  shownext = TRUE;
+      }
 }
 
 static void choose_level ()
@@ -722,16 +821,16 @@ static void choose_level ()
    char buf[NAMELEN];
 
    if (gamemode == GAME_ZEN) {
-      level = GAME_ZEN_LEVEL;
+      start_level = GAME_ZEN_LEVEL;
       return;
    }
 
    fprintf (stderr,"Choose a level to start [%d-%d]: ",MINLEVEL,MAXLEVEL);
    fgets (buf,NAMELEN - 1,stdin);
    buf[strlen (buf) - 1] = '\0';
-   if (!str2int (&level,buf) || level < MINLEVEL || level > MAXLEVEL) {
-      level = 1 + rand_value(-1, 8);
-      fprintf (stderr,"Okay, picked level %d\n",level);
+   if (!str2int (&start_level,buf) || start_level < MINLEVEL || start_level > MAXLEVEL) {
+      start_level = 1 + rand_value(-1, 8);
+      fprintf (stderr,"Okay, picked level %d\n",start_level);
       sleep(1);
    }
 }
@@ -746,14 +845,14 @@ int main (int argc,char *argv[])
    int ch;
    engine_t engine;
    /* Initialize */
-   rand_init ();							/* must be called before engine_init () */
+   rand_init ();				/* must be called before engine_init () */
    engine_init (&engine,score_function);	/* must be called before using engine.curshape */
    finished = shownext = FALSE;
    memset (shapecount,0,NUMSHAPES * sizeof (int));
    shapecount[engine.curshape]++;
-   parse_options (argc,argv);				/* must be called after initializing variables */
-   if (level < MINLEVEL) choose_level ();
-   engine_tweak (level, gamemode, &engine);	/* must be called after level selected */
+   parse_options (argc,argv);			/* must be called after initializing variables */
+   if (start_level < MINLEVEL) choose_level ();
+   engine_tweak (start_level, gamemode, &engine);	/* must be called after level selected */
    io_init ();
    drawbackground ();
    in_timeout (DELAY);
@@ -796,15 +895,15 @@ int main (int argc,char *argv[])
 				  /* next level */
 				case 'a':
 				case KEY_UP:
-				  if (level < MAXLEVEL)
+				  if (engine.level < MAXLEVEL)
 					{
-					   level++;
+					   engine.level++;
 					   in_timeout (DELAY);
 					}
 				  else if (engine.game_mode == GAME_ZEN)
 					{
                                            /* wrap around on zen */
-					   level = MINLEVEL;
+					   engine.level = MINLEVEL;
 					   in_timeout (DELAY);
 					}
 				  else out_beep ();
@@ -836,16 +935,17 @@ int main (int argc,char *argv[])
 			   {
 				  /* game over (board full) */
 				case -1:
-				  if ((level < MAXLEVEL) && ((engine.status.droppedlines / 10) > level)) level++;
+				  if ((engine.level < MAXLEVEL) && ((engine.status.droppedlines / 10) > engine.level)) engine.level++;
 				  finished = TRUE;
 				  break;
 				  /* shape at bottom, next one released */
 				case 0:
-				  if ((level < MAXLEVEL) &&
-				      ((engine.status.droppedlines / 10) > level) &&
+				  if ((engine.level < MAXLEVEL) &&
+				      ((engine.status.droppedlines / 10) > engine.level) &&
+				      (engine.game_mode != GAME_CHALLENGE) &&
 				      (engine.game_mode != GAME_ZEN))
 					{
-					   level++;
+					   engine.level++;
 					   in_timeout (DELAY);
 					}
 				  shapecount[engine.curshape]++;

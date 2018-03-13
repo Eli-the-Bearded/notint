@@ -1,5 +1,8 @@
 /*
  * Tries to convert an older score file format to a newer.
+ * Current notint can upgrade the second notint format without
+ * needing this.
+ *
  * Likely not of general interest.
  *
  * Does NOT attempt to identify / fix issues like
@@ -46,27 +49,30 @@
 #define PRE_NOTINT	1
 #define FIRST_NOTINT	2
 
+/* current notint can upgrade second notint without this */
+
 /* void input file */
 #define DEVNULL         "/dev/null"
 
 struct {
-    char name[NAMELEN]; /* ---vvvvvvvvvvvvvvvvvvvv                        */
-    int   traditional;  /* -----------------------------vvvvv             */
-    int   easytris;     /* ------------------------------------vvvv       */
-    int   zen;          /* ------------------------------------------vvv  */
+    char name[NAMELEN]; /* ---vvvvvvvvvvvvvvvvvvvv                         */
+    int   traditional;  /* --------------------------vvvvv                 */
+    int   easytris;     /* --------------------------------vvvv            */
+    int   zen;          /* --------------------------------------vvv       */
+    int   chal;         /* -------------------------------------------vvvv */
 } authors[] = {
     /* Scores are high, but not so high a player shouldn't be able to
      * replacing them soon. All need to be in consistent descending order
      * (excluding zeroed values).
      */
-    { /* original game    */  "Alexey Pajitnov",     5000,    0, 100 },
-    { /* original game    */  "Dmitry Pavlovsky",    4000,    0,  90 },
-    { /* original game    */  "Vadim Gerasimov",     3000,    0,  80 },
-    { /* tint primary     */  "Abraham vd Merwe",    2000,    0,  70 },
-    { /* tint contributor */  "Robert Lemmen",       1000,    0,  60 },
-    { /* tint contributor */  "Marcello Mamino",      750,    0,  50 },
-    { /* notint fork      */  "Eli the Bearded",      500, 1500,  40 },
-    { /* end of list      */  "\0",                     0,    0,   0 }
+    { /* original game    */  "Alexey Pajitnov",     5000,    0, 100, 3000 },
+    { /* original game    */  "Dmitry Pavlovsky",    4000,    0,  90, 2750 },
+    { /* original game    */  "Vadim Gerasimov",     3000,    0,  80, 2500 },
+    { /* tint primary     */  "Abraham vd Merwe",    2000,    0,  70, 2250 },
+    { /* tint contributor */  "Robert Lemmen",       1000,    0,  60, 2000 },
+    { /* tint contributor */  "Marcello Mamino",      750,    0,  50, 1750 },
+    { /* notint fork      */  "Eli the Bearded",      500, 1500,  40, 1500 },
+    { /* end of list      */  "\0",                     0,    0,   0,    0 }
 };
 
 score_t scores[BIG_NUMSCORES],
@@ -105,11 +111,12 @@ void initscores (void)
  */
 void makenewscores (void)
 {
-    int i, off_trad, off_easy, off_zen;
+    int i, off_trad, off_easy, off_zen, off_chal;
 
     off_trad = GAME_TRADITIONAL * NUMSCORES;
     off_easy = GAME_EASYTRIS    * NUMSCORES;
     off_zen  = GAME_ZEN         * NUMSCORES;
+    off_chal = GAME_CHALLENGE   * NUMSCORES;
 
     for (i = 0; i < NUMSCORES; i ++) {
         if ('\0' == authors[i].name[0]) {
@@ -142,6 +149,15 @@ void makenewscores (void)
             /* middle set of scores 2000s */
 	    new_scores[off_zen].timestamp = DATESHIFT (SCORE_DATE_NEW,off_zen - 10);
 	    off_zen ++;
+	}
+
+	if (authors[i].chal > 0) {
+	    strncpy (new_scores[off_chal].name,authors[i].name,NAMELEN);
+	    new_scores[off_chal].name[NAMELEN -1] = '\0';
+	    new_scores[off_chal].score = authors[i].chal;
+            /* kinda early scores */
+	    new_scores[off_chal].timestamp = DATESHIFT (SCORE_DATE_NEW,off_chal - 15);
+	    off_chal ++;
 	}
 
     }
@@ -279,6 +295,7 @@ void shufflescores (void) {
 	easy = NUMSCORES * GAME_EASYTRIS;	/*  0 ..  9 */
 	trad = NUMSCORES * GAME_TRADITIONAL;	/* 10 .. 19 */
 	zen  = NUMSCORES * GAME_ZEN;		/* 20 .. 29 */
+        /* challenge never existed in files this converts */
 
 	for (old = 0, use = 0; old < NUMSCORES; old++)
 	   {
