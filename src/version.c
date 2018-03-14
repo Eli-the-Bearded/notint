@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const char *program_version = "notint version 1.0, a fork of tint 0.04";
+const char *program_version = "notint version 1.1, a fork of tint 0.04";
 
 void showversion () {
     puts (program_version);

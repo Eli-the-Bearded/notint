@@ -37,8 +37,18 @@ C. Zen
    UP, which will wrap around from level 9 speeds back to level 1).
    Scoring is completely changed. All that matters is lines cleared.
 
-I had originally tried to keep the scores merged, but with zen it is
-clear that each mode should have it's own high score list.
+D. Challenge
+
+   Each level starts with a partially filled field which then
+   refreshes after the "solve" criteria is met. Solving involves
+   removing all of the pre-seeded blocks (which are marked).
+   Removing rows without marked blocks incurs a small penalty.
+   There's also a penalty for how many extra blocks are on the
+   game board upon solving. The first eight levels have a series
+   of unchanging challenges. Then it switches to random placement.
+
+I had originally tried to keep the scores merged, but upon adding zen
+it was clear that each mode should have it's own high score list.
 
 FUTURE
 ------
@@ -46,10 +56,6 @@ FUTURE
 Some better way of system versus $HOME directory scorefile. Compiled-in
 fixed string is not very flexible.
 
-Consider a "challenge" mode that starts with a partially filled field
-which then refreshes after certain "win" criteria is met. I believe
-the original arcade version had something like that, with "ten lines
-cleared" being the win criteria.
 
 BUILD
 -----

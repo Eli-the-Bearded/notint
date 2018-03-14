@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "typedefs.h"
 #include "utils.h"
@@ -253,9 +254,12 @@ static int droplines (board_t board)
 static int countblocks (int mask, board_t board)
 {
    int r, c, count = 0;
-   /* row 0, col 0, row -1, row -2, col -1, and col -1 all walls */
-   for (r = 1; r < NUMROWS - 3; r++) {
-	for (c = 1; c < NUMCOLS - 3; c++) {
+   /* row[0] empty (off top);
+    * row[NUMROWS-1] and row[NUMROWS-2] bottom wall;
+    * col[0] left wall; col[NUMCOLS-1], and col[NUMCOLS-2] right wall
+    */
+   for (r = 1; r < NUMROWS - 2; r++) {
+	for (c = 1; c < NUMCOLS - 2; c++) {
 		if (mask & board[c][r])
 			count ++;
 	}
@@ -378,23 +382,100 @@ void engine_tweak (int level, int mode, engine_t *engine)
  */
 void engine_chalset (engine_t *engine)
 {
-   int r, c;
-   /* these are really sucky proof-of-concept levels */
-   for (c = 1; c < 8; c++)
-      {
-	for (r = 12 + c; r < 21; r++)
-	   {
-		if (engine->level > 7)
-		   {
-			if ((0 == (r % (engine->level / 3))) || (0 == (c % (engine->level / 3))))
-				 engine->board[c][r] = (CHALLENGE_MASK | c);
-		   }
-		else
-		   {
-			if (0 == (r % engine->level)) engine->board[c][r] = (CHALLENGE_MASK | c);
-		   }
-	   }
-      }
+   int r, c;	/* row and column */
+   int h,i,j,k;   /* misc use */
+
+   switch (engine->level)
+	{
+	   case 1:
+	   case 2:
+	         /* Level one and two are both left hand flush side triangles
+		  * of column striped blocks. Level one is solid, level
+		  * two is full of holes.
+		  */
+	         j = engine->level / 2;	/* remainder */
+		 k =     engine->level; /* divider   */
+
+	         for (c = 1; c < 8; c++)
+		    {
+		      for (r = 12 + c; r < 21; r++)
+		         {
+			      i = ((j == (r % k)) || (j == (c % k)));
+			      if (i) engine->board[c][r] = (CHALLENGE_MASK | c);
+		         }
+		    }
+	         break;
+
+	         /* Level three and four are stripes with wide spaces.
+		  * Level five and six are stripes with narrow spaces.
+		  * In each pair, the second level has the stripes go higher.
+		  * Colors are sequential, but missing pieces help hide that.
+		  */
+	   case 3:
+	   case 4:
+	   case 5:
+	   case 6:
+		 j = 3; /* spacing */
+		 h = 0; /* height adjust */
+		 if (engine->level > 4) { j = h = 2; }
+	         for (c = 1; c < 11; c++)
+		    {
+		      for (r = 18 - engine->level + h; r < 21; r++)
+		      {
+		        k = (r + c) % 7 + 1;  /* color */
+			if(0 == (c % j)) engine->board[c][r] = (CHALLENGE_MASK | k);
+		      }
+		    }
+
+	         break;
+	         /* Level seven and eight are both right hand side triangles,
+		  * not flush, and checkerboarded. The level eight version is
+		  * taller. Colors are striped by row.
+		  */
+	   case 7:
+	   case 8:
+	         j = 8 - engine->level; /* remainder */
+	         for (h = 2; h < 9; i++)
+		    {
+		      c = 10 - h;
+		      for (r = 12 + h; r < 21; r++)
+		         {
+			      k = 1 + (r % 7); /* color */
+			      if (j == (c+r) %2) engine->board[c][r] = (CHALLENGE_MASK | k);
+		         }
+		    }
+	         break;
+		 
+	   default:
+	       /* Level nine and up (no level cap) are just random blocks.
+	        * Higher levels have more rows of blocks, with fewer in them.
+		* Colors are in horizontal runs.
+		*/
+	       h = 25 - engine->level; /* height adjust */
+	       if (h < 6) { h = 6; }   /* 6 from top to 16 from top */
+	       k = 25 + h * 3;   /* rand threshold */
+
+	       for (r = h; r < 21; r++)
+		  {
+		    i = 0;                      /* block count in row */
+		    j = 1 + rand_value(-1, 7);  /* current color */
+		    for (c = 1; c < 11; c++)
+		       {
+			    if (k > rand_value (-1, 99)) {
+			        i ++; 
+				if (i < 6) {
+				   engine->board[c][r] = (CHALLENGE_MASK | j);
+
+		                   if (i > 3) { j = 1 + rand_value(-1, 7); }  /* new color */
+			        } else {
+				   /* ensure at least one blank */
+				   i = 0;
+				}
+			    }
+		       }
+		  }
+	}
+
    engine->status.challengestart =
 	engine->status.challengeblocks =
 	engine->status.challengeblocks_prev =
@@ -441,18 +522,22 @@ int engine_evaluate (engine_t *engine)
 
    if (shape_bottom (engine->board,&engine->shapes[engine->curshape],engine->curx,engine->cury))
 	 {
-		/* increase score */
+		/* collect data to increase score */
 		engine->status.lastclear = droplines (engine->board);
-                if (engine->game_mode == GAME_CHALLENGE)
+		
+		/* count blocks only if we actually cleared something */
+                if ((engine->game_mode == GAME_CHALLENGE) &&
+		    (engine->status.lastclear > 0))
                     {
 			engine->status.challengeblocks = countblocks (CHALLENGE_MASK, engine->board);
-			if(!engine->status.challengeblocks)
+			engine->status.nonchallengeblocks = countblocks ( COLOR_MASK, engine->board) - engine->status.challengeblocks; 
+			if(engine->status.challengeblocks < 1)
 			    {
-				engine->status.nonchallengeblocks = countblocks ( COLOR_MASK, engine->board);
 				/* level may effect score, just collect data now, then
 				 * score, then up level and reset
 				 */
 				need_reset = TRUE;
+				sleep(1);
 			    }
 		    }
 
@@ -463,6 +548,12 @@ int engine_evaluate (engine_t *engine)
 			memcpy (engine->board,blank_board,sizeof (board_t));
 			engine->level ++;
 	                engine_chalset (engine);
+		    }
+		
+                if ((engine->game_mode == GAME_CHALLENGE) &&
+		    (engine->status.lastclear == 0))
+		    {
+			engine->status.nonchallengeblocks += NUMBLOCKS;
 		    }
 
 		/* update status information */

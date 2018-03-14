@@ -62,6 +62,8 @@ static char challchar = '+';
  * a block collides at the bottom of the screen (or the top of the heap).
  * In easy-tris mode, you also get points for rows cleared.
  * In zen mode, you only get points for rows cleared.
+ * In challenge mode there are point penalties for non-challenge rows cleared,
+ * and extra non-challenge mode blocks left over.
  */
 static void score_function (engine_t *engine)
 {
@@ -77,14 +79,14 @@ static void score_function (engine_t *engine)
      	if (engine->status.challengeblocks == engine->status.challengeblocks_prev)
 	   {
 		/* penalty for clearing a line without any challenge blocks */
-      		engine->score -= SCOREVAL (engine->status.lastclear);
+      		engine->score -= engine->level * 2 * SCOREVAL (engine->status.lastclear);
 	   }
      	else if (0 == engine->status.challengeblocks)
 	   {
 		/* bonus for clearing all of the challenge blocks */
       		engine->score += SCOREVAL (engine->status.challengestart);
                 /* and penalty for any other blocks remaining */
-      		engine->score -= SCOREVAL (engine->status.nonchallengeblocks);
+      		engine->score -= 10 * SCOREVAL (engine->status.nonchallengeblocks);
 	   }
 		
         engine->status.challengeblocks_prev = engine->status.challengeblocks;
@@ -220,6 +222,10 @@ static void showstatus (engine_t *engine)
    } else {
       out_gotoxy (1,YTOP + 1);   out_printf ("Your level: %d",engine->level);
       out_gotoxy (1,YTOP + 2);   out_printf ("Full lines: %d",engine->status.droppedlines);
+      if (engine->game_mode == GAME_CHALLENGE) {
+         out_gotoxy (0,YTOP + 3);out_printf ("Blocks togo: %d",
+	 					engine->status.challengeblocks);
+      }
    }
    out_gotoxy (2,YTOP + 4);   out_printf ("Score");
    out_setattr (ATTR_BOLD);
@@ -341,6 +347,7 @@ static void showstatus (engine_t *engine)
 	     break;
    	case GAME_CHALLENGE:
 	     out_printf ("Challenge    : %3d", engine->status.challengeblocks);
+	     out_printf ("Other blocks : %3d", engine->status.nonchallengeblocks);
 	     break;
      }
 
@@ -411,14 +418,21 @@ static void getname (char *name)
 {
    struct passwd *pw = getpwuid (geteuid ());
    char *noname = "(mystery player)";
+   int okay = FALSE;
 
    if (!quiet_scores)
          {
 	     fprintf (stderr,"Congratulations! You have a new high score.\n");
-	     fprintf (stderr,"Enter your name [%s]: ",pw != NULL ? pw->pw_name : "");
 
-	     fgets (name,NAMELEN - 1,stdin);
-	     name[strlen (name) - 1] = '\0';
+	     do
+	        {
+		 fprintf (stderr,"Enter your name [%s]: ",pw != NULL ? pw->pw_name : "");
+		 fgets (name,NAMELEN - 1,stdin);
+		 name[strlen (name) - 1] = '\0';
+
+		 /* accept empty string or a string with no <escape> characters */
+		 if ((strlen(name) == 0) || (NULL == strchr(name, 27))) { okay = TRUE; }
+	        } while (!okay);
          }
     
 
@@ -783,7 +797,8 @@ static void parse_options (int argc,char *argv[])
 		  {
 			 i++;
 			 if (i >= argc || !str2int (&start_level,argv[i])) showhelp ();
-			 if ((start_level < MINLEVEL) || (start_level > MAXLEVEL))
+			 /* no upper level for challenge mode */
+			 if ((start_level < MINLEVEL) || ((gamemode != GAME_CHALLENGE) && (start_level > MAXLEVEL)))
 			   {
 				  fprintf (stderr,"You must specify a level between %d and %d\n",MINLEVEL,MAXLEVEL);
 				  exit (EXIT_FAILURE);
@@ -828,7 +843,8 @@ static void choose_level ()
    fprintf (stderr,"Choose a level to start [%d-%d]: ",MINLEVEL,MAXLEVEL);
    fgets (buf,NAMELEN - 1,stdin);
    buf[strlen (buf) - 1] = '\0';
-   if (!str2int (&start_level,buf) || start_level < MINLEVEL || start_level > MAXLEVEL) {
+   /* sssh, not telling anyone, but no cap on level in challenge mode */
+   if (!str2int (&start_level,buf) || start_level < MINLEVEL || ((gamemode != GAME_CHALLENGE) && start_level > MAXLEVEL)) {
       start_level = 1 + rand_value(-1, 8);
       fprintf (stderr,"Okay, picked level %d\n",start_level);
       sleep(1);

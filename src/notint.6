@@ -24,7 +24,7 @@
 notint \- fork of the original tint
 .SH SYNOPSIS
 .B notint
-.RI [ -e | -t | -z ]
+.RI [ -c | -e | -t | -z ]
 .RI [ -l\  level ]
 .RI [ -n ]
 .RI [ -d ]
@@ -39,6 +39,11 @@ fork. As with all games (and especially with notint), you have to play it,
 not read about it.
 .SH OPTIONS
 Game play mode options (only one mode can be played at a time):
+.TP
+.B \-c
+Play in
+.I challenge
+mode, which has a board pre-populated with squares, which change each level.
 .TP
 .B \-e
 Play in
@@ -63,7 +68,9 @@ Other game options:
 Specify the starting level (1-9). The higher the level you're starting from,
 the faster the pieces move. Except for 
 .I zen
-mode, you'll earn points faster, too.
+mode, you'll earn points faster, too. In challenge mode, each of the first
+eight levels have a fixed pattern to solve (ie, remove all those pieces).
+After level eight it is a random mess to clean up.
 .TP
 .B \-n
 Draw next shape. In
