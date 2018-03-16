@@ -64,16 +64,16 @@ typedef struct
 
 typedef struct
 {
-   int moves;
-   int rotations;
-   int dropcount;
+   int moves;		        /* horizontal moves for efficiency */
+   int rotations;		/* rotational moves for efficiency */
+   int dropcount;		/* how far the last piece fell */
    int efficiency;
-   int droppedlines;
-   int lastclear;
-   int challengestart;
-   int challengeblocks;
-   int challengeblocks_prev;
-   int nonchallengeblocks;
+   int droppedlines;		/* how many lines cleared total */
+   int lastclear;		/* how many lines cleared with last piece */
+   int challengestart;		/* initial challenge block count */
+   int challengeblocks;		/* current challenge block count */
+   int challengeblocks_prev;	/* previous challenge block count */
+   int nonchallengeblocks;	/* non-challenge blocks on board */
 } status_t;
 
 typedef struct engine_struct
