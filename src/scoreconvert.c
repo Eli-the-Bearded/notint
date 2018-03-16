@@ -65,13 +65,13 @@ struct {
      * replacing them soon. All need to be in consistent descending order
      * (excluding zeroed values).
      */
-    { /* original game    */  "Alexey Pajitnov",     5000,    0, 100, 8000 },
-    { /* original game    */  "Dmitry Pavlovsky",    4000,    0,  90, 7000 },
-    { /* original game    */  "Vadim Gerasimov",     3000,    0,  80, 6000 },
-    { /* tint primary     */  "Abraham vd Merwe",    2000,    0,  70, 5000 },
-    { /* tint contributor */  "Robert Lemmen",       1000,    0,  60, 4000 },
-    { /* tint contributor */  "Marcello Mamino",      750,    0,  50, 3000 },
-    { /* notint fork      */  "Eli the Bearded",      500, 1500,  40, 2000 },
+    { /* original game    */  "Alexey Pajitnov",     5000,    0, 100, 4000 },
+    { /* original game    */  "Dmitry Pavlovsky",    4000,    0,  90, 3500 },
+    { /* original game    */  "Vadim Gerasimov",     3000,    0,  80, 3000 },
+    { /* tint primary     */  "Abraham vd Merwe",    2000,    0,  70, 2500 },
+    { /* tint contributor */  "Robert Lemmen",       1000,    0,  60, 2000 },
+    { /* tint contributor */  "Marcello Mamino",      750,    0,  50, 1500 },
+    { /* notint fork      */  "Eli the Bearded",      500, 1500,  40, 1000 },
     { /* end of list      */  "\0",                     0,    0,   0,    0 }
 };
 

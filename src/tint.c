@@ -75,31 +75,56 @@ static void score_function (engine_t *engine)
       return;
    }
 
-   if (engine->game_mode == GAME_CHALLENGE) {
-     	if (engine->status.challengeblocks == engine->status.challengeblocks_prev)
-	   {
-		/* penalty for clearing a line without any challenge blocks */
-      		engine->score -= engine->level * 2 * SCOREVAL (engine->status.lastclear);
-	   }
-     	else if (0 == engine->status.challengeblocks)
-	   {
-		/* bonus for clearing all of the challenge blocks */
-      		engine->score += SCOREVAL (engine->status.challengestart);
-                /* and penalty for any other blocks remaining */
-      		engine->score -= 10 * SCOREVAL (engine->status.nonchallengeblocks);
-	   }
-		
-        engine->status.challengeblocks_prev = engine->status.challengeblocks;
-   }
+   if (engine->game_mode == GAME_CHALLENGE)
+       {
+            score = 0;
 
-   score = SCOREVAL (engine->level * (engine->status.dropcount + 1));
+	    /* Penalty for clearing a line without any challenge blocks.
+	     */
+	    if (engine->status.lastclear && (engine->status.challengeblocks == engine->status.challengeblocks_prev))
+	       {
+		    score -= SCOREVAL (engine->level * engine->status.lastclear);
+	       }
+
+	    /* Drop distance bonus only applies if line count is appropriate for
+	     * that level in traditional.
+	     */
+	    if ((10 * engine->level) > engine->status.droppedlines)
+	       {
+		    score += SCOREVAL (engine->level * (engine->status.dropcount + 1));
+	       }
+
+
+	    /* Cleared this challenge level! */
+            if (0 == engine->status.challengeblocks)
+	       {
+		    /* bonus for clearing all of the challenge blocks */
+		    score += SCOREVAL (engine->status.challengestart);
+		    /* and penalty for any other blocks remaining */
+		    score -= SCOREVAL (2 * engine->status.nonchallengeblocks);
+	       }
+		    
+	    engine->status.challengeblocks_prev = engine->status.challengeblocks;
+       }
+   else
+       {
+	    /* Tradional scoring: most points come from how far a piece fell */
+            score = SCOREVAL (engine->level * (engine->status.dropcount + 1));
+       }
+
    if (shownext) score /= SCORE_PENALTY;
    if (dottedlines) score /= SCORE_PENALTY;
 
-   if(engine->game_mode == GAME_EASYTRIS) {
-      score += engine->level * engine->status.lastclear;
-   }
+   /* Easytris bonus for actually clearing some lines */
+   if(engine->game_mode == GAME_EASYTRIS)
+       {
+          score += engine->level * engine->status.lastclear;
+       }
+
    engine->score += score;
+
+   /* be nice to challenge players */
+   if( engine->score < 0 ) { engine->score = 0; }
 }
 
 /* Draw the board on the screen */
@@ -323,30 +348,33 @@ static void showstatus (engine_t *engine)
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 20);
    for (i = 0; i < MAXDIGITS + 16; i++) out_putch (' ');
    out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 20);
-   out_printf ("Score ratio  :");
-   snprintf (tmp,MAXDIGITS + 1,"%d",GETSCORE (engine->score) / sum);
-   out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 20);
-   out_printf ("%s",tmp);
-   out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
-   for (i = 0; i < MAXDIGITS + 16; i++) out_putch (' ');
-   out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
 
    switch (engine->game_mode)
      {
    	case GAME_TRADITIONAL:
+	     out_printf ("Score ratio  :");
+	     snprintf (tmp,MAXDIGITS + 1,"%d",GETSCORE (engine->score) / sum);
+	     out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 20);
+	     out_printf ("%s",tmp);
+	     out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
+	     for (i = 0; i < MAXDIGITS + 16; i++) out_putch (' ');
+	     out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
 	     out_printf ("Efficiency   :");
 	     snprintf (tmp,MAXDIGITS + 1,"%d",engine->status.efficiency);
 	     out_gotoxy (out_width () - strlen (tmp) - 1,YTOP + 21);
 	     out_printf ("%s",tmp);
 	     break;
    	case GAME_EASYTRIS:
+             /* on YTOP + 20 */
 	     out_printf ("Status-count : %1d-%2d",
 			(engine->rand_status>>STATUS_SHIFT),
 			(engine->rand_status % STATUS_MOD)
 		);
 	     break;
    	case GAME_CHALLENGE:
+             /* on YTOP + 20 */
 	     out_printf ("Challenge    : %3d", engine->status.challengeblocks);
+	     out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
 	     out_printf ("Other blocks : %3d", engine->status.nonchallengeblocks);
 	     break;
      }
