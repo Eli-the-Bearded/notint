@@ -92,8 +92,10 @@ int update_rs(int old)
 bool str2int (int *i,const char *str)
 {
    char *endptr;
-   *i = strtol (str,&endptr,0);
-   if (*str == '\0' || *endptr != '\0' || *i == LONG_MIN || *i == LONG_MAX || *i < INT_MIN || *i > INT_MAX) return FALSE;
+   long tmp;	/* fix for 64-bit systems where long > int */
+   tmp = strtol (str,&endptr,0);
+   if (*str == '\0' || *endptr != '\0' || tmp <= INT_MIN || tmp >= INT_MAX) return FALSE;
+   *i = (int)tmp;
    return TRUE;
 }
 

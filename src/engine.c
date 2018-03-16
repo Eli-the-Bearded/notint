@@ -435,7 +435,7 @@ void engine_chalset (engine_t *engine)
 	   case 7:
 	   case 8:
 	         j = 8 - engine->level; /* remainder */
-	         for (h = 2; h < 9; i++)
+	         for (h = 2; h < 9; h++)
 		    {
 		      c = 10 - h;
 		      for (r = 12 + h; r < 21; r++)
