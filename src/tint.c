@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -42,6 +43,7 @@
 /* included in utils.: #include "typedefs.h" */
 #include "io.h"
 #include "config.h"
+#include "version.h"
 #include "engine.h"
 
 
@@ -53,6 +55,7 @@ static int gamemode = GAME_TRADITIONAL;
 static int quiet_scores = FALSE;
 static char blockchar = ' ';
 static char challchar = '+';
+static char *scorefile;
 
 /*
  * Functions
@@ -442,11 +445,57 @@ static void print_scores(time_t curr, int mode, score_t *scores)
    fprintf (stderr,"%s",scorebetw);
 }
 
+static void getscorefile (void)
+{
+    char *envvar, *envname;
+    char *c;
+    int size, tmp;
+
+
+    if (*conf_scorefile != '$')
+	{
+	    scorefile = conf_scorefile;
+	    return;
+	}
+    c = conf_scorefile + 1;
+    while ( *c  && (*c == '_' || isalnum(tmp = *c)) ) c++;
+    /* Now c is either \0 or the first post-envname character, so
+     * either way size will be one longer than name.
+     */
+    size = c - conf_scorefile;
+    envname = (char*)malloc(size);
+    if (envname == NULL)
+        {
+	    fputs("Out of memory\n", stderr);
+	    exit(1);
+        }
+    strncpy (envname, conf_scorefile + 1, size);
+    envname[size -1] = '\0';
+    envvar = getenv(envname);
+    if (envvar == NULL)
+        {
+	    scorefile = c;
+	    return;
+	}
+    size = strlen(envvar) + strlen(c) + 1;
+    scorefile = (char*)malloc(size);
+    if (scorefile == NULL)
+        {
+	    fputs("Out of memory\n", stderr);
+	    exit(1);
+        }
+    strcpy (scorefile, envvar);
+    strcat (scorefile, c);
+    scorefile[size -1] = '\0';
+}
+
 static void getname (char *name)
 {
-   struct passwd *pw = getpwuid (geteuid ());
-   char *noname = "(mystery player)";
    int okay = FALSE;
+   struct passwd *pw = getpwuid (geteuid ());
+   char *sugname = getenv_with_default (NOTINT_NAME, 
+   				pw != NULL ? pw->pw_name : "(mystery player)");
+   sugname[NAMELEN - 1] = '\0';
 
    if (!quiet_scores)
          {
@@ -454,7 +503,7 @@ static void getname (char *name)
 
 	     do
 	        {
-		 fprintf (stderr,"Enter your name [%s]: ",pw != NULL ? pw->pw_name : "");
+		 fprintf (stderr,"Enter your name [%s]: ",sugname);
 		 fgets (name,NAMELEN - 1,stdin);
 		 name[strlen (name) - 1] = '\0';
 
@@ -467,14 +516,7 @@ static void getname (char *name)
 
    if (quiet_scores || !strlen (name))
        {
-	   if(pw != NULL)
-		 {
-			strncpy (name,pw->pw_name,NAMELEN);
-		 }
-             else
-		 {
-			strncpy (name,noname,NAMELEN);
-		 }
+	   strncpy (name,sugname,NAMELEN);
 	   name[NAMELEN - 1] = '\0';
        }
 
@@ -780,8 +822,6 @@ static void showhelp ()
    exit (EXIT_FAILURE);
 }
 
-void showversion(/* in version.c */);
-
 static void parse_options (int argc,char *argv[])
 {
    int i = 1;
@@ -793,7 +833,7 @@ static void parse_options (int argc,char *argv[])
 		/* High scores? */
 		else if (strcmp (argv[i],"-v") == 0)
 		 {
-		  showversion ();
+		  showversion (conf_scorefile);
 		 }
 		else if (strcmp (argv[i],"-s") == 0)
 		 {
@@ -890,6 +930,7 @@ int main (int argc,char *argv[])
    engine_t engine;
    /* Initialize */
    rand_init ();				/* must be called before engine_init () */
+   getscorefile ();
    engine_init (&engine,score_function);	/* must be called before using engine.curshape */
    finished = shownext = FALSE;
    memset (shapecount,0,NUMSHAPES * sizeof (int));

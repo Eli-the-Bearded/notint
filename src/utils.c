@@ -99,3 +99,13 @@ bool str2int (int *i,const char *str)
    return TRUE;
 }
 
+/*
+ * If env variable name has a value, return that, otherwise return default
+ */
+char *getenv_with_default (const char *name,char *def)
+{
+     char *env = getenv(name);
+     if (env == NULL || *env == '\0') return def;
+     return env;
+}
+

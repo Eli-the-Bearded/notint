@@ -44,6 +44,7 @@ Game play mode options (only one mode can be played at a time):
 Play in
 .I challenge
 mode, which has a board pre-populated with squares, which change each level.
+Removing rows which contain no challenge blocks incurs a penalty.
 .TP
 .B \-e
 Play in
@@ -68,19 +69,20 @@ Other game options:
 Specify the starting level (1-9). The higher the level you're starting from,
 the faster the pieces move. Except for 
 .I zen
-mode, you'll earn points faster, too. In challenge mode, each of the first
-eight levels have a fixed pattern to solve (ie, remove all those pieces).
-After level eight it is a random mess to clean up.
+mode, you'll earn points faster, too. In challenge mode, six of the first
+ten levels have a fixed pattern to solve (ie, remove all those pieces).
+Levels 2, 7, 8, 9 and after level ten just have progressively trickier
+randon messes to clean up. (Note that level 9 is as high as you can start.)
 .TP
 .B \-n
-Draw next shape. In
-.I traditional
-mode this comes at a score penalty.
+Draw next shape. In all modes but
+.I zen
+this comes at a score penalty.
 .TP
 .B \-d
-Draw dotted lines. In the
-.I traditional
-mode this comes at a score penalty.
+Draw dotted lines. In all modes but
+.I zen
+this comes at a score penalty.
 .TP
 .B \-b <char>
 Use the specified character (instead of spaces) to draw blocks.
@@ -130,6 +132,13 @@ Quit game.
 .TP
 .B s
 Toggle show next.
+.SH ENVIRONMENT
+Depending on compile time options, the high score file may use an environment
+variable. The compiled-in value is shown in the version output:
+.B nontint -v
+Additionally, the variable
+.B NOTINT_NAME
+will be used as the default when adding entries to the high score file.
 .SH AUTHOR
 This manual page was written by Abraham van der Merwe <abz@debian.org>,
 for the Debian GNU/Linux system (but may be used by others).

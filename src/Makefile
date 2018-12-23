@@ -3,15 +3,15 @@
 # compatible makefile, even if it does a little less (eg, no cross
 # comples).
 # 
-localstatedir = $(HOME)
+localstatedir = $(DESTDIR)/var/games
 SCORE_TEMPLATE = $(PRG).scores
 CFLAGS += -Wall
-CPPFLAGS = -DSCOREFILE=\"$(localstatedir)/.$(SCORE_TEMPLATE)\"
+CPPFLAGS = # -DSCOREFILE=\"$(localstatedir)/$(SCORE_TEMPLATE)\"
 LDLIBS = -lcurses
 
 OBJ = engine.o utils.o io.o tint.o version.o
 SRC = engine.c utils.c io.c tint.c version.c
-HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h
+HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h version.h
 PRG = notint
 
 
@@ -49,4 +49,4 @@ distclean: clean
 engine.o: engine.c typedefs.h utils.h io.h engine.h basic.h
 utils.o: utils.c typedefs.h basic.h
 io.o: io.c io.h
-tint.o: tint.c typedefs.h utils.h io.h config.h engine.h basic.h
+tint.o: tint.c typedefs.h utils.h io.h config.h engine.h basic.h version.h

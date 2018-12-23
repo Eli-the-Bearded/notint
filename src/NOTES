@@ -44,8 +44,13 @@ D. Challenge
    removing all of the pre-seeded blocks (which are marked).
    Removing rows without marked blocks incurs a small penalty.
    There's also a penalty for how many extra blocks are on the
-   game board upon solving. The first eight levels have a series
-   of unchanging challenges. Then it switches to random placement.
+   game board upon solving. Levels 1, 3, 4, 5, 6, and 10 have a
+   series of fixed challenges. On 2, 7, 8, 9, and 11 & up it
+   switches to random placement.
+
+   The game level only advances when the challenge is cleared, but
+   the level-based piece drop points stop accruing if the total
+   count of cleared lines is "wrong" for the level.
 
 I had originally tried to keep the scores merged, but upon adding zen
 it was clear that each mode should have it's own high score list.

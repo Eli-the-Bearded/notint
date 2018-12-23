@@ -50,7 +50,7 @@ LDLIBS = -lcurses
 
 OBJ = engine.o utils.o io.o tint.o version.o
 SRC = $(OBJ:%.o=%.c)
-HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h
+HEADERS = config.h engine.h io.h typedefs.h utils.h basic.h version.h
 PRG = notint
 
        ########### NOTHING TO EDIT BELOW THIS ###########

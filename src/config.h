@@ -30,6 +30,18 @@
  */
 
 /* Score file */
-const char scorefile[] = SCOREFILE;
+/* Only leading env variables are expanded, so
+ *      conf_scorefile[] = "/var/games/notint.scores";  <- okay
+ *      conf_scorefile[] = "$NOTINT_SCOREFILE";         <- okay
+ *      conf_scorefile[] = "$HOME/my_scores";           <- okay
+ *      conf_scorefile[] = "/var/games/$USER/notint";   <- looking for trouble
+ */
+#ifdef SCOREFILE
+char conf_scorefile[] = SCOREFILE;
+#else
+char conf_scorefile[] = "$HOME/.notint.scores";
+#endif
 
+/* env var to check for default name for high scores */
+#define NOTINT_NAME  "NOTINT_NAME"
 #endif	/* #ifndef CONFIG_H */

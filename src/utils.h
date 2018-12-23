@@ -52,4 +52,9 @@ int update_rs (int old);
  */
 bool str2int (int *i,const char *str);
 
+/*
+ * If env variable name has a value, return that, otherwise return default
+ */
+char *getenv_with_default (const char *name,char *def);
+
 #endif	/* #ifndef UTILS_H */
