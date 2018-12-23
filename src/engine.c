@@ -388,13 +388,13 @@ void engine_chalset (engine_t *engine)
    switch (engine->level)
 	{
 	   case 1:
-	   case 2:
-	         /* Level one and two are both left hand flush side triangles
+	   case 10:
+	         /* Level one and ten are both left hand flush side triangles
 		  * of column striped blocks. Level one is solid, level
-		  * two is full of holes.
+		  * ten is full of holes.
 		  */
-	         j = engine->level / 2;	/* remainder */
-		 k =     engine->level; /* divider   */
+	         j = (engine->level == 1) ? 0: 1;
+		 k = (engine->level == 1) ? 1: 2;
 
 	         for (c = 1; c < 8; c++)
 		    {
@@ -406,21 +406,25 @@ void engine_chalset (engine_t *engine)
 		    }
 	         break;
 
-	         /* Level three and four are stripes with wide spaces.
-		  * Level five and six are stripes with narrow spaces.
-		  * In each pair, the second level has the stripes go higher.
+	         /* Stripes with wide (j=3) or narrow (j=2) spaces.
+		  * Lower h is taller stripes.
 		  * Colors are sequential, but missing pieces help hide that.
 		  */
 	   case 3:
 	   case 4:
 	   case 5:
 	   case 6:
-		 j = 3; /* spacing */
-		 h = 0; /* height adjust */
-		 if (engine->level > 4) { j = h = 2; }
+	         /* gcc optimizer doesn't like setting these on the case N:
+		  * lines and then falling through, so a second test of
+		  * game level is needed.
+		  */
+                 if      (engine->level == 3) { h = 0; j = 3; }
+		 else if (engine->level == 4) { h = 2; j = 3; }
+		 else if (engine->level == 5) { h = 1; j = 2; }
+		 else                         { h = 3; j = 2; }
 	         for (c = 1; c < 11; c++)
 		    {
-		      for (r = 18 - engine->level + h; r < 21; r++)
+		      for (r = 18 - h; r < 21; r++)
 		      {
 		        k = (r + c) % 7 + 1;  /* color */
 			if(0 == (c % j)) engine->board[c][r] = (CHALLENGE_MASK | k);
@@ -432,10 +436,10 @@ void engine_chalset (engine_t *engine)
 		  * not flush, and checkerboarded. The level eight version is
 		  * taller. Colors are striped by row.
 		  */
-	   case 7:
-	   case 8:
+	   case -7: /* don't use */
+	   case -8: /* kinda dumb */
 	         j = 8 - engine->level; /* remainder */
-	         for (h = 2; h < 9; h++)
+	         for (h = 2; h < 9; i++)
 		    {
 		      c = 10 - h;
 		      for (r = 12 + h; r < 21; r++)
@@ -446,14 +450,16 @@ void engine_chalset (engine_t *engine)
 		    }
 	         break;
 		 
-	   default:
+	   default: /* more interesting than older level 7 / 8 anyway */
 	       /* Level nine and up (no level cap) are just random blocks.
 	        * Higher levels have more rows of blocks, with fewer in them.
 		* Colors are in horizontal runs.
 		*/
 	       h = 25 - engine->level; /* height adjust */
 	       if (h < 6) { h = 6; }   /* 6 from top to 16 from top */
+	       if (h > 20) { h = 18; }
 	       k = 25 + h * 3;   /* rand threshold */
+
 
 	       for (r = h; r < 21; r++)
 		  {
