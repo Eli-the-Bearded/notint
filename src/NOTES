@@ -52,8 +52,11 @@ D. Challenge
    the level-based piece drop points stop accruing if the total
    count of cleared lines is "wrong" for the level.
 
-I had originally tried to keep the scores merged, but upon adding zen
-it was clear that each mode should have it's own high score list.
+E. Speed
+
+   This is a "correction" to zen mode which rewards faster work.
+   The only event that can increase a base score is clearing a
+   line, but game play time modifies that.
 
 FUTURE
 ------
@@ -73,7 +76,7 @@ to create a pre-seeded high score list using author names.
 The build and game has been tested on Linux and NetBSD with gcc. The
 original source did not play well with NetBSD curses.
 
-March 2018
+January 2019
 
 ====== Original Tint Notes ======
 =================================

@@ -11,10 +11,10 @@ the BSD games version of Tetris to drop the same piece about 30
 times in a row (there's a small chance of getting something
 different). This changes gameplay significantly. In the end, I
 found that the controls in that version of Tetris to be
-unsatisfactory, hence moving to a new code base.
+unsatisfactory, and moved to a new code base.
 
-As of release 1.1, there are four game play modes with their
-own high score lists:
+As of release 1.4, there are five game play modes here. Each
+scores differently and have their own high score lists:
 
 * _traditional_
   This should be just the same as TINT, except that a scoring
@@ -22,16 +22,22 @@ own high score lists:
   has been fixed.
 
 * _easytris_
-  This is the less random game piece selection. For intervals
-  of ten to thirty pieces, you have an 85% chance to get a
-  particular piece, then the interval resets to a new piece.
-
-* _zen_
-  This just scores based on lines cleared. The game play
-  never speeds up, it's just a steady stream of blocks.
+  This makes the game "easy" by being highly predictable in
+  piece selection for long stretches. For intervals of ten to
+  thirty pieces, you have an 85% chance to get a particular
+  piece, then the interval resets with a new piece.
 
 * _challenge_
-  Clear the board of the initial pieces, trying not to leave
-  the board full of additional pieces when solved.
+  Clear the board of the initial pieces to advance the level,
+  trying not to leave the board full of additional pieces when
+  solved.
 
-March 2018
+* _zen_
+  This just scores based on lines cleared. The game play never
+  speeds up for a soothing steady stream of blocks.
+
+* _speed_
+  This scores on a lines per minute basis. It's a "correction"
+  to _zen_ to reward fast work.
+
+January 2019

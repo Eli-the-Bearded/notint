@@ -39,8 +39,14 @@
 /* first gen notint */
 #define SCORE_HEADER		"notint scorefile"
 /* current */
+
+/* trad, easy, and zen */
 #define  SCORE_MAGIC_NUMBER_1	"<notint scorefile version=2>"
-#define  SCORE_MAGIC_NUMBER	"<notint scorefile version=3>"
+/* trad, easy, zen, and challenge */
+#define  SCORE_MAGIC_NUMBER_2	"<notint scorefile version=3>"
+
+/* trad, easy, zen, challenge, and speed */
+#define  SCORE_MAGIC_NUMBER	"<notint scorefile version=4>"
 
 /* Longer than any "magic number" header in any recognized format,
  * but less than shortest legit score file.
@@ -58,8 +64,7 @@ static const char scorebetw[]  = "-------------+----+-------+---+---------------
 /* Number of scores allowed in highscore list (per mode) */
 #define NUMSCORES 10
 
-/* NUMSCORES for each game mode */
-#define BIG_NUMSCORES (4*NUMSCORES)
+/* BIG_NUMSCORES defined after GAME_ definitions */
 
 /* How much space to use for a printable date */
 /* YYYY-MM-DD HH:MM:SS 
@@ -81,23 +86,31 @@ static const char scorebetw[]  = "-------------+----+-------+---+---------------
 #define GAME_TRADITIONAL	1
 #define GAME_ZEN		2
 #define GAME_CHALLENGE		3
-/* index to furture proof entry (so increase as game modes go up */
-#define GAME_UNKNOWN		4
+#define GAME_SPEED		4
+
+/* number of modes with high score lists */
+#define GAME_MODE_COUNT		5
+/* index to future proof entry (so increase as game modes go up) */
+#define GAME_UNKNOWN		5
 
 /* lowest and highest game_mode values; high only used in scoreconvert */
 #define MODE_LOW		0
-#define MODE_HIGH		3
+#define MODE_HIGH		4
+
+/* NUMSCORES for each game mode */
+#define BIG_NUMSCORES (GAME_MODE_COUNT*NUMSCORES)
 
 #ifdef NEED_GAMETYPE
 /* Used in high score display, and shared between two different programs.
- * So ifdef'ed rather an a .c with just the one definition.
+ * So ifdef'ed rather than a .c with just the one definition.
  * All entries should be same length.
  */
 static char *gametype[] = {
-	"- easy-tris -", 
-	"-traditional-", 
-	"- - -zen- - -",
-	"- challenge -",
+	"- easy-tris -", 	/* 0 GAME_EASYTRIS	*/
+	"-traditional-", 	/* 1 GAME_TRADITIONAL	*/
+	"- - -zen- - -",	/* 2 GAME_ZEN		*/
+	"- challenge -",	/* 3 GAME_CHALLENGE	*/
+	"- speed run -",	/* 4 GAME_SPEED		*/
 
 	/* future proof */
 	"***unknown***",

@@ -83,7 +83,11 @@ typedef struct engine_struct
    int curshape,nextshape;				/* current & next shapes */
    int score;						/* score */
    int rand_status;					/* -1 : regular; 0 & up: shape counter */
-   int game_mode;					/* traditional, easy, zen */
+   int game_mode;					/* traditional, easy, ... */
+   time_t start_time;					/* time and pause for speed mode */
+   time_t pause_start;
+   time_t pause_end;
+   time_t accumulated_pause;
    shapes_t shapes;					/* shapes */
    board_t board;					/* board */
    status_t status;					/* current status of shapes */

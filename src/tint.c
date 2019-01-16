@@ -65,6 +65,7 @@ static char *scorefile;
  * a block collides at the bottom of the screen (or the top of the heap).
  * In easy-tris mode, you also get points for rows cleared.
  * In zen mode, you only get points for rows cleared.
+ * In speed run mode, you get points for lines cleared per minute, zero for first ten lines and/or minute.
  * In challenge mode there are point penalties for non-challenge rows cleared,
  * and extra non-challenge mode blocks left over.
  */
@@ -75,6 +76,36 @@ static void score_function (engine_t *engine)
    if (engine->game_mode == GAME_ZEN) {
       /* score is saved at a multiple real value */
       engine->score += SCOREVAL (engine->status.lastclear);
+      return;
+   }
+
+   if (engine->game_mode == GAME_SPEED) {
+      int raw_score;
+      int multiplier = 60;
+
+      time_t run_time = time(NULL) - engine->start_time;
+
+      /* backwards from regular game because of how multipler gets
+       * used here.
+       */
+      if (shownext) multiplier *= SCORE_PENALTY;
+      if (dottedlines) multiplier *= SCORE_PENALTY;
+
+      /* To discourage using pause: it 50% of pause counts towards
+       * your run time.
+       */
+      run_time -= engine->accumulated_pause / 2;
+
+      if ((run_time < 60) || (engine->status.droppedlines < 10)) {
+         raw_score = 0;
+      } else {
+         raw_score = (engine->status.droppedlines * 60) / run_time;
+         multiplier = run_time / multiplier;
+	 raw_score *= multiplier;
+      }
+
+      /* score is saved at a multiple real value */
+      engine->score = SCOREVAL (raw_score);
       return;
    }
 
@@ -420,20 +451,11 @@ static void print_scores(time_t curr, int mode, score_t *scores)
 		show_as = scores[offset].score;
 	   }
 
-	switch (scores[offset].trad_mode)
-	   {
-	      case GAME_EASYTRIS:
-	      case GAME_TRADITIONAL:
-	      case GAME_ZEN:
-	      case GAME_CHALLENGE:
+	if (scores[offset].trad_mode < GAME_UNKNOWN) {
 	      	fputs(gametype[scores[offset].trad_mode], stderr);
-	      	break;
-
-	      default:
+	} else {
 	      	fputs(gametype[GAME_UNKNOWN], stderr);
-	      	break;
-
-	   }
+	}
 	fprintf (stderr,"| %2d |%7d| %c | %-20s | %s\n",
 		i + 1,show_as,this,scores[offset].name,time_str_buf);
         i++;
@@ -688,7 +710,18 @@ static void savescores (int score)
 	 }
    if (strncmp (SCORE_MAGIC_NUMBER_1,header,strlen (SCORE_MAGIC_NUMBER_1)) == 0)
 	 {
-		/* this version has trad, easy, and zen but no challenge */
+		/* this version has trad, easy, and zen
+		 * but no challenge or speed
+		 */
+	 	expect_scores = BIG_NUMSCORES - NUMSCORES - NUMSCORES;
+		if(score < 0)
+			printf("OLDER SCOREFILE; MISSING SOME SCORES\n");
+	 }
+   else if (strncmp (SCORE_MAGIC_NUMBER_2,header,strlen (SCORE_MAGIC_NUMBER_2)) == 0)
+	 {
+		/* this version has trad, easy, zen, and challenge
+		 * but no speed
+		 */
 	 	expect_scores = BIG_NUMSCORES - NUMSCORES;
 		if(score < 0)
 			printf("OLDER SCOREFILE; MISSING SOME SCORES\n");
@@ -744,12 +777,12 @@ static void savescores (int score)
    /* don't even consider writing the score file for -s mode */
    if (score < 0)
      {
+	   int mode;
 	   /* print each of the game mode score lists */
 	   fprintf(stderr,"%s",scoretitle);
-           print_scores(tmp,GAME_EASYTRIS,scores);
-           print_scores(tmp,GAME_TRADITIONAL,scores);
-           print_scores(tmp,GAME_ZEN,scores);
-           print_scores(tmp,GAME_CHALLENGE,scores);
+	   for (mode = 0; mode < GAME_UNKNOWN; mode ++) {
+		print_scores (tmp,mode,scores);
+           }
      }
    else
      {
@@ -800,7 +833,7 @@ static void savescores (int score)
 static void showhelp ()
 {
    fprintf (stderr,"USAGE: notint [-h|-s|-v]\n");
-   fprintf (stderr,"or   : notint [-c|-e|-t|-z] [-l level] [-n] [-d] [-b char]\n");
+   fprintf (stderr,"or   : notint [-c|-e|-t|-z|-S] [-l level] [-n] [-d] [-b char]\n");
 
    fprintf (stderr,"Non-game play flags (show and exit)\n");
    fprintf (stderr,"  -h           Show this help message\n");
@@ -812,6 +845,7 @@ static void showhelp ()
    fprintf (stderr,"  -e           Play the easytris version\n");
    fprintf (stderr,"  -t           Play the traditional version\n");
    fprintf (stderr,"  -z           Play the zen version\n");
+   fprintf (stderr,"  -S           Play the speed-run version\n");
 
    fprintf (stderr,"Game options\n");
    fprintf (stderr,"  -b <char>    Use this character to draw blocks instead of spaces\n");
@@ -859,6 +893,11 @@ static void parse_options (int argc,char *argv[])
 		else if (strcmp (argv[i],"-t") == 0)
 		 {
 		  gamemode = GAME_TRADITIONAL;
+		 }
+		/* Speed Run? */
+		else if (strcmp (argv[i],"-S") == 0)
+		 {
+		  gamemode = GAME_SPEED;
 		 }
 		/* Level? */
 		else if (strcmp (argv[i],"-l") == 0)
@@ -1000,10 +1039,13 @@ int main (int argc,char *argv[])
 				  break;
 				  /* pause */
 				case 'p':
+				  engine.pause_start = time(NULL);
 				  out_setcolor (COLOR_WHITE,COLOR_BLACK);
 				  out_gotoxy ((out_width () - 34) / 2,out_height () - 2);
 				  out_printf ("Paused - Press any key to continue");
 				  while ((ch = in_getch ()) == ERR) ;	/* Wait for a key to be pressed */
+				  engine.pause_end = time(NULL);
+				  engine.accumulated_pause += engine.pause_end - engine.pause_start;
 				  in_flush ();							/* Clear keyboard buffer */
 				  out_gotoxy ((out_width () - 34) / 2,out_height () - 2);
 				  out_printf ("                                  ");

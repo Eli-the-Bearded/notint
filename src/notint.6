@@ -21,10 +21,10 @@
 .\" .RE        restore indent
 .\" .P         start new paragraph
 .SH NAME
-notint \- fork of the original tint
+notint \- fork of the original tint, Tint Is Not Tetris
 .SH SYNOPSIS
 .B notint
-.RI [ -c | -e | -t | -z ]
+.RI [ -c | -e | -t | -z | -S ]
 .RI [ -l\  level ]
 .RI [ -n ]
 .RI [ -d ]
@@ -43,24 +43,38 @@ Game play mode options (only one mode can be played at a time):
 .B \-c
 Play in
 .I challenge
-mode, which has a board pre-populated with squares, which change each level.
+mode, where the board is pre-populated with blocks which must all be
+cleared to advance the level.
 Removing rows which contain no challenge blocks incurs a penalty.
 .TP
 .B \-e
 Play in
 .I easytris
-mode, which has does not use normal random piece selection.
+mode, which has does not use normal random piece selection. Because
+isn't it easier to know you'll get the same selection for most of the
+next ten to thirty pieces?
 .TP
 .B \-t
 Play in
 .I traditional
-mode, which is unchanged from the normal rules.
+mode, which is unchanged from the original 
+.I tint
+rules.
 .TP
 .B \-z
 Play in
 .I zen
 mode, which stops the game speed from advancing and makes the score
 all (and only) about lines cleared.
+.TP
+.B \-S
+Play in a
+.I speed
+focused mode much like
+.I zen
+but score is based on lines cleared per minute (and zero for under
+ten lines or one minute). Normal level advancement and with it, fall speed
+increases apply.
 .RE
 .sp
 Other game options:
@@ -69,10 +83,14 @@ Other game options:
 Specify the starting level (1-9). The higher the level you're starting from,
 the faster the pieces move. Except for 
 .I zen
-mode, you'll earn points faster, too. In challenge mode, six of the first
-ten levels have a fixed pattern to solve (ie, remove all those pieces).
-Levels 2, 7, 8, 9 and after level ten just have progressively trickier
-randon messes to clean up. (Note that level 9 is as high as you can start.)
+or
+.I speed
+modes, you'll earn more points for piece dropping at higher levels. In
+.I challenge 
+mode, six of the first ten levels have a fixed pattern to solve (ie,
+remove all those pieces). Levels 2, 7, 8, 9 and levels over ten just
+have progressively trickier random messes to clean up. The challenge
+blocks are distinguished with a different background character.
 .TP
 .B \-n
 Draw next shape. In all modes but
@@ -88,7 +106,7 @@ this comes at a score penalty.
 Use the specified character (instead of spaces) to draw blocks.
 .RE
 .sp
-Non-game play options:
+Flags that do not result in playing a game:
 .TP
 .B \-h
 Show summary of options and exit.
@@ -132,6 +150,47 @@ Quit game.
 .TP
 .B s
 Toggle show next.
+.SH SCORING
+In the orignal game (still preserved as 
+.I traditional
+mode), scoring is heavily influenced by how far you "drop" a piece. This
+scoring philosophy exists still in the 
+.I easytris
+and
+.I challenge
+mode as well. The
+.I zen
+and
+.I speed
+modes work on a scoring philosophy that lines cleared is the important score
+criteria. One is a very simple just the lines removed score, and the other
+has an adjustment based on lines per amount of time, favoring fast work. Those
+two modes have no scoring bonus for merely dropping a piece, but recall that
+dropping will make your game go faster for
+.I
+speed
+mode.
+.P
+In all modes but
+.I zen
+to counter the advantages of the draw
+grid and next piece preview options, those incur a scoring penalty. In
+most of the modes with the penalty, it comes in the form of a divider.
+The
+.I speed
+mode instead has the penalty reduce the time multiplier, a reduction that
+goes all the way to zero in first few minutes or with too much accumulated
+pause time.
+.P
+One other scoring scenario worth noting is
+.I challenge
+mode gives drop bonuses only if lines cleared does not exceed normal range
+for the level. That is on say, level 3, drop bonuses only apply if less
+than 30 lines have been cleared, 20 to 29 being the normal range for that
+level. The
+.I challenge
+mode also has a penalty for clearing a line without any of the challenge
+blocks. This penalty increases with level.
 .SH ENVIRONMENT
 Depending on compile time options, the high score file may use an environment
 variable. The compiled-in value is shown in the version output:

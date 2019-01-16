@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "typedefs.h"
 #include "utils.h"
@@ -348,6 +349,9 @@ void engine_tweak (int level, int mode, engine_t *engine)
 {
      engine->level = level;
      engine->game_mode = mode;
+     engine->start_time = time(NULL);
+     engine->pause_start = engine->pause_end = engine->accumulated_pause =
+	 (time_t)0;
 
      if (engine->game_mode == GAME_CHALLENGE) 
         {
