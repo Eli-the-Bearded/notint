@@ -4,6 +4,16 @@
 /* Number of shapes in the game */
 #define NUMSHAPES	7
 
+/* Name the shapes for convience; letters kinda resemble the shape */
+#define SHAPE_Z    0		/* the cyan shape */
+#define SHAPE_S    1		/* the green shape */
+#define SHAPE_T    2		/* the yellow shape */
+#define SHAPE_O    3		/* the blue shape */
+#define SHAPE_L    4		/* the magenta shape */
+#define SHAPE_J    5		/* the white shape */
+#define SHAPE_I    6		/* the red shape */
+#define NO_SHAPE   -9		/* must be negative for rand_value() */
+
 /* Number of blocks in each shape */
 #define NUMBLOCKS	4
 
@@ -122,6 +132,9 @@ static char *gametype[] = {
  */
 #define GAME_ZEN_LEVEL		3
 
+/* How many rounds to display the "this is special" message */
+#define SHOW_SPECIAL_ROUNDS     5
+
 /* The score is multiplied by this to avoid losing precision.
  * It's SCORE_PENALTY ^ (number of possible penalties).
  */
@@ -138,6 +151,7 @@ static char *gametype[] = {
 
 /* This calculates the time allowed to move a shape, before it is moved a row down */
 #define DELAY (1000000 / (engine.level + 2))
+#define CHALLENGE_DELAY (1000000 / (3))
 
 /* This calculates the stored score value */
 #define SCOREVAL(x) (SCORE_FACTOR * (x))

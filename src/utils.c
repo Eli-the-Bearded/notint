@@ -49,14 +49,12 @@ void rand_init ()
 int rand_value (int status, int range)
 {
    if(status < 0) {
-     return (random () % range);
+     return (random() % range);
    } else {
-     int rc = status / STATUS_GROUP;
-     int lucky = random () % 100;
+     int rc = status % range;
+     int lucky = random() % 100;
      if(lucky < PERCENT_RAND) {
        rc = (random () % range);
-     } else {
-       rc = status >> STATUS_SHIFT;
      }
      return(rc);
    }
@@ -67,22 +65,22 @@ int rand_value (int status, int range)
  */
 int update_rs(int old)
 {
-  int shape, prev_shape;;
-  int count;
+  int use_next;
   if(old < 0) {
-    return(-1);
+    return(old);
   }
 
-  prev_shape = old >> STATUS_SHIFT;
-  count = old % STATUS_MOD;
-  if (count == 0) {
-    do {
-	    shape = rand_value(-1, NUMSHAPES) << STATUS_SHIFT;
-    } while ( shape == prev_shape );
-    count = STATUS_MIN + rand_value(-1, STATUS_GROUP);
-    return( shape | count );
+  use_next = random();
+  if ((old % NUMSHAPES) == (use_next % NUMSHAPES)) {
+     int lucky = random() % 100;
+     /* this lucky checks the opposite way from rand_value() lucky */
+     if(lucky > PERCENT_RAND) {
+       /* pick a new random without checking status mod 7 */
+       use_next = random();
+     }
+    
   }
-  return(old - 1);
+  return(use_next);
 }
 
 /*

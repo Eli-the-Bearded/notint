@@ -36,12 +36,6 @@
  * Macros
  */
 
-/* if rand_status < 0, return -1; 
- *	else if rand_status is MAX, return zero
- *		else return rand_status incremented
- */
-#define UPDATE_RS(_rs)	((_rs) < 0 ? -1 : \
-			   ((_rs) == STATUS_MAX ? 0 : (_rs) + 1))
 
 /*
  * Type definitions
@@ -81,6 +75,8 @@ typedef struct engine_struct
    int level;						/* game level */
    int curx,cury;					/* coordinates of current piece */
    int curshape,nextshape;				/* current & next shapes */
+   int prefer_shape;					/* used on some challenge levels */
+   int show_special;					/* flat on special challenge levels */
    int score;						/* score */
    int rand_status;					/* -1 : regular; 0 & up: shape counter */
    int game_mode;					/* traditional, easy, ... */

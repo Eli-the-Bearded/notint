@@ -53,6 +53,7 @@ static int shapecount[NUMSHAPES];
 static int start_level = MINLEVEL - 1;
 static int gamemode = GAME_TRADITIONAL;
 static int quiet_scores = FALSE;
+static int show_special = 0;
 static char blockchar = ' ';
 static char challchar = '+';
 static char *scorefile;
@@ -113,13 +114,6 @@ static void score_function (engine_t *engine)
        {
             score = 0;
 
-	    /* Penalty for clearing a line without any challenge blocks.
-	     */
-	    if (engine->status.lastclear && (engine->status.challengeblocks == engine->status.challengeblocks_prev))
-	       {
-		    score -= SCOREVAL (engine->level * engine->status.lastclear);
-	       }
-
 	    /* Drop distance bonus only applies if line count is appropriate for
 	     * that level in traditional.
 	     */
@@ -129,11 +123,18 @@ static void score_function (engine_t *engine)
 	       }
 
 
+	    /* Penalty for clearing a line without any challenge blocks.
+	     */
+	    if (engine->status.lastclear && (engine->status.challengeblocks == engine->status.challengeblocks_prev))
+	       {
+		    score /= SCORE_PENALTY;
+	       }
+
 	    /* Cleared this challenge level! */
             if (0 == engine->status.challengeblocks)
 	       {
 		    /* bonus for clearing all of the challenge blocks */
-		    score += SCOREVAL (engine->status.challengestart);
+		    score += SCOREVAL (engine->level * engine->status.challengestart);
 		    /* and penalty for any other blocks remaining */
 		    score -= SCOREVAL (2 * engine->status.nonchallengeblocks);
 	       }
@@ -213,6 +214,16 @@ static void drawboard (board_t board)
 			   }
 		  }
 	 }
+   if(show_special) {
+	  out_setcolor (COLOR_WHITE,COLOR_BLACK);
+	  out_gotoxy (XTOP + 6, YTOP + 4);
+	  out_printf ("This  Level");
+          out_setcolor (COLOR_YELLOW,COLOR_BLACK);
+	  out_gotoxy (XTOP + 5, YTOP + 7);
+	  out_printf ("Feels Special");
+	  /* countdown to reset */
+	  show_special --;
+   }
    out_setattr (ATTR_OFF);
 }
 
@@ -410,6 +421,10 @@ static void showstatus (engine_t *engine)
 	     out_printf ("Challenge    : %3d", engine->status.challengeblocks);
 	     out_gotoxy (out_width () - MAXDIGITS - 17,YTOP + 21);
 	     out_printf ("Other blocks : %3d", engine->status.nonchallengeblocks);
+             if(engine->show_special) {
+	       show_special = SHOW_SPECIAL_ROUNDS;
+	       engine->show_special = 0;
+	     }
 	     break;
      }
 
@@ -979,7 +994,19 @@ int main (int argc,char *argv[])
    engine_tweak (start_level, gamemode, &engine);	/* must be called after level selected */
    io_init ();
    drawbackground ();
-   in_timeout (DELAY);
+   if (engine.game_mode == GAME_CHALLENGE) {
+     /* use up or A to increase speed, normal challenge mode doesn't
+      * scale speed to level.
+      */
+     in_timeout (CHALLENGE_DELAY);
+     /* but for scoring purposes, don't give them extra levels worth
+      * of "free" lines to clear.
+      */
+     engine.status.droppedlines = 10 * (engine.level - 1);
+   } else {
+     /* starting drop speed linked to game level */
+     in_timeout (DELAY);
+   }
    /* Main loop */
    do
 	 {

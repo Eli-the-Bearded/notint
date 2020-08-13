@@ -49,6 +49,7 @@ const shapes_t SHAPES =
  *                        X             X           X
  *
  * num    0       1       2       3       4       5       6
+ * name   Z       S       T       O       L       J       I
  * ASCII art from tetris-bsd, which uses same numbering. (This
  * is not the order shown in the tint statistics.)
  */     
@@ -280,6 +281,7 @@ void engine_init (engine_t *engine,void (*score_function)(engine_t *))
    engine->cury = 1;
    engine->curshape = rand_value (-1, NUMSHAPES);
    engine->nextshape = rand_value (-1, NUMSHAPES);
+   engine->prefer_shape = NO_SHAPE;
    engine->game_mode = GAME_TRADITIONAL;
    engine->score = 0;
    engine->rand_status = -1;
@@ -383,12 +385,17 @@ void engine_tweak (int level, int mode, engine_t *engine)
 /*
  * Set up a game board and update status for a level appropriate
  * challenge.
+ * c == 1 is left column; c == 10 is right column
+ * r == 1 is top of board; r == 20 is bottom of board
+ * as a practical matter putting stuff above r==4 is probably unfair.
  */
 void engine_chalset (engine_t *engine)
 {
    int r, c;	/* row and column */
    int h,i,j,k;   /* misc use */
 
+   engine->prefer_shape = NO_SHAPE;
+   engine->show_special = 0;
    switch (engine->level)
 	{
 	   case 1:
@@ -417,14 +424,17 @@ void engine_chalset (engine_t *engine)
 	   case 3:
 	   case 4:
 	   case 5:
-	   case 6:
+	   case -6: /* former level six */
 	         /* gcc optimizer doesn't like setting these on the case N:
 		  * lines and then falling through, so a second test of
 		  * game level is needed.
 		  */
                  if      (engine->level == 3) { h = 0; j = 3; }
 		 else if (engine->level == 4) { h = 2; j = 3; }
-		 else if (engine->level == 5) { h = 1; j = 2; }
+		 else if (engine->level == 5) { h = 1; j = 2; 
+		                                engine->prefer_shape = SHAPE_J; 
+                                                engine->show_special = 50;
+					      }
 		 else                         { h = 3; j = 2; }
 	         for (c = 1; c < 11; c++)
 		    {
@@ -436,7 +446,35 @@ void engine_chalset (engine_t *engine)
 		    }
 
 	         break;
-	         /* Level seven and eight are both right hand side triangles,
+
+	   case 6: 
+	   case 7: 
+	         /* checkerboard with a preferred shape */
+		 if ( engine->level == 6 ) {
+		   /* checkboard is hard in general, T shape
+		    * makes it easier, but still just 3 lines.
+		    */
+		   j = 18;
+		   engine->prefer_shape = SHAPE_T; 
+		 } else {
+		   /* more tedious than difficult */
+		   j = 16;
+		   engine->prefer_shape = SHAPE_I; 
+		 }
+		 engine->show_special = 1;
+	         for (c = 1; c < 11; c++)
+		    {
+		      for (r = j; r < 21; r++)
+		         {
+			      k = (r % 7) + 1; /* color by row */
+			      i = (c + r) % 2;
+			      if (i) engine->board[c][r] = (CHALLENGE_MASK | k);
+		         }
+		    }
+	         break;
+
+	         /* (FORMERLY)
+		  * Level seven and eight are both right hand side triangles,
 		  * not flush, and checkerboarded. The level eight version is
 		  * taller. Colors are striped by row.
 		  */
@@ -585,8 +623,15 @@ int engine_evaluate (engine_t *engine)
 		}
 		engine->cury = 1;
 		engine->curshape = engine->nextshape;
-		engine->nextshape = rand_value (engine->rand_status, NUMSHAPES);
-		engine->rand_status = update_rs(engine->rand_status);
+
+                if (engine->game_mode == GAME_CHALLENGE) {
+		   engine->curshape = rand_value(engine->prefer_shape, NUMSHAPES);
+		   engine->nextshape = rand_value(engine->prefer_shape, NUMSHAPES);
+	        } else {
+		   engine->nextshape = rand_value (engine->rand_status, NUMSHAPES);
+		   engine->rand_status = update_rs(engine->rand_status);
+		}
+
 		/* initialize shapes */
 		memcpy (engine->shapes,SHAPES,sizeof (shapes_t));
 		/* return games status */
